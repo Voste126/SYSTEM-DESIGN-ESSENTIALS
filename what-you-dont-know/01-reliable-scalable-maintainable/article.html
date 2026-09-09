@@ -1,94 +1,197 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>01 — Reliable, Scalable, Maintainable Applications | System Design Essentials</title>
-  <meta name="description" content="Visual explainer and senior-engineer depth for DDIA Chapter 1: Reliability, Scalability, and Maintainability.">
-  <meta name="color-scheme" content="light">
-  <link rel="stylesheet" href="../../_shared/theme.css">
-  <script src="../../_shared/scrollytelling.js" defer></script>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reliable, scalable, maintainable</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EEEDE6; --paper-2:#E6E4D8; --ink:#1D2321; --ink-soft:#4B4A42;
+  --muted:#8A8776; --line:#CFCCBC; --accent:#B9762B; --accent-dim:#D8C39A;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0; background:var(--paper); color:var(--ink); font-family:'Source Serif 4', Georgia, serif; font-size:19px; line-height:1.65;}
+.mono{font-family:'IBM Plex Mono', monospace}
+.top-nav{max-width:640px; margin:0 auto; padding:1.5rem 24px 0; display:flex; gap:10px;}
+.nav-btn{font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--ink-soft); text-decoration:none; padding:6px 12px; border:1px solid var(--line); border-radius:4px; transition:border-color .15s, color .15s;}
+.nav-btn:hover{border-color:var(--accent); color:var(--accent);}
+.nav-btn.back{color:var(--accent); border-color:var(--accent-dim);}
+header{max-width:640px; margin:0 auto; padding:2.5rem 24px 3rem; border-bottom:1px solid var(--line);}
+header p.kicker{font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--accent); letter-spacing:0.02em; margin:0 0 1.25rem;}
+h1{font-size:40px; font-weight:600; line-height:1.15; margin:0 0 1rem; max-width:520px;}
+header p.dek{font-size:18px; color:var(--ink-soft); max-width:480px; margin:0;}
+main{max-width:940px; margin:0 auto; padding:3rem 24px 6rem;}
+.layout{display:grid; grid-template-columns:300px 1fr; gap:48px; align-items:start;}
+.diagram-col{position:sticky; top:24px;}
+.stage-nav{display:flex; flex-direction:column; gap:2px; margin-top:1.25rem; font-family:'IBM Plex Mono',monospace; font-size:13px;}
+.stage-nav button{all:unset; cursor:pointer; padding:7px 10px; border-radius:3px; color:var(--muted); border-left:2px solid transparent;}
+.stage-nav button.active{color:var(--ink); border-left:2px solid var(--accent); background:var(--paper-2);}
+.stage-nav button:hover{color:var(--ink);}
+figure{margin:0; padding:1.25rem; background:var(--paper-2); border:1px solid var(--line); border-radius:4px;}
+figcaption{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--muted); margin-top:0.75rem; line-height:1.5;}
+.prose section{padding:2.5rem 0; border-bottom:1px solid var(--line); scroll-margin-top:24px;}
+.prose section:last-child{border-bottom:none;}
+.prose h2{font-size:15px; font-family:'IBM Plex Mono',monospace; font-weight:500; color:var(--accent); margin:0 0 0.5rem; cursor:pointer;}
+.prose h3{font-size:26px; font-weight:600; margin:0 0 1rem; line-height:1.25;}
+.prose p{margin:0 0 1rem; max-width:62ch;}
+.term{display:inline-block; margin:0.75rem 0; padding:0.85rem 1rem; background:var(--paper-2); border-left:2px solid var(--accent-dim); font-size:16px; color:var(--ink-soft); max-width:60ch;}
+.term b{color:var(--ink); font-weight:600;}
+footer{max-width:640px; margin:0 auto; padding:3rem 24px 6rem; color:var(--muted); font-size:15px; border-top:1px solid var(--line);}
+.toggle-row{display:flex; gap:8px; margin:1.25rem 0 1rem;}
+.toggle-row button{font-family:'IBM Plex Mono', monospace; font-size:13px; padding:8px 14px; border:1px solid var(--line); border-radius:4px; background:none; cursor:pointer; color:var(--ink-soft);}
+.toggle-row button.on{border-color:var(--accent); color:var(--accent); background:var(--paper-2);}
+.fanout-stats{display:flex; gap:24px; margin:1rem 0 1.5rem; font-family:'IBM Plex Mono', monospace;}
+.fanout-stats div{flex:1;}
+.fanout-stats .num{font-size:26px; color:var(--ink);}
+.fanout-stats .lbl{font-size:11px; color:var(--muted); margin-top:2px;}
+@media (max-width:860px){ .layout{grid-template-columns:1fr;} .diagram-col{position:static;} h1{font-size:32px;} }
+svg text{font-family:'IBM Plex Mono', monospace;}
+</style>
 </head>
 <body>
 
-  <nav class="top-nav">
-    <a href="../index.html" class="nav-btn back">&larr; <span class="track-name">what you don't know</span></a>
-    <a href="../../index.html" class="nav-btn">index</a>
-  </nav>
+<nav class="top-nav">
+  <a href="../index.html" class="nav-btn back">&larr; what you don't know</a>
+  <a href="../../index.html" class="nav-btn">index</a>
+</nav>
 
-  <header class="article-header">
-    <div class="article-meta">
-      <span>Chapter 01</span>
-      <span>•</span>
-      <span class="source-ref">Martin Kleppmann, Designing Data-Intensive Applications</span>
-    </div>
-    <h1 class="article-title">Reliable, Scalable, Maintainable Applications</h1>
-    <p class="article-dek">
-      The core foundations of data-intensive systems. Moving beyond buzzwords to examine the conflicting tensions between fault tolerance, load parameters, and operational evolvability.
-    </p>
-  </header>
+<header>
+  <p class="kicker">senior engineer track — chapter 01</p>
+  <h1>Reliable, scalable, maintainable</h1>
+  <p class="dek">Three words that get thrown around loosely. This is what they mean precisely, and why the "obviously correct" architecture is sometimes wrong for your actual load.</p>
+</header>
 
-  <main class="scrolly-container">
-    <!-- Left Column: Sticky Diagram -->
-    <aside class="diagram-column">
-      <div id="stage-nav-container" class="stage-nav"></div>
+<main>
+  <div class="layout">
+    <div class="diagram-col">
+      <figure>
+        <svg width="100%" viewBox="0 0 300 260" role="img">
+          <title>Three pillars: reliability, scalability, maintainability</title>
+          <rect data-min="1" x="10" y="10" width="280" height="72" rx="6" fill="none" stroke="var(--ink)" stroke-width="1"/>
+          <text data-min="1" x="150" y="32" text-anchor="middle" font-size="12" fill="var(--ink)" font-weight="600">reliability</text>
+          <text data-min="1" x="150" y="52" text-anchor="middle" font-size="9.5" fill="var(--muted)">hardware · software · human faults</text>
+          <text data-min="1" x="150" y="68" text-anchor="middle" font-size="9.5" fill="var(--muted)">fault \u2260 failure</text>
 
-      <figure class="diagram-frame">
-        <div class="diagram-svg-wrap">
-          <svg viewBox="0 0 800 500" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <!-- diagram TODO once chapter is finished -->
-            <rect x="50" y="50" width="700" height="400" rx="8" fill="#FAFAF7" stroke="#CFCCBC" stroke-width="1.5" stroke-dasharray="6 6"/>
-            <text x="400" y="240" font-family="'IBM Plex Mono', monospace" font-size="14" font-weight="600" fill="#8A8776" text-anchor="middle">
-              <!-- diagram TODO once chapter is finished -->
-              [ DIAGRAM STUB — DDIA CH 01 ]
-            </text>
-            <text x="400" y="270" font-family="'Source Serif 4', serif" font-size="13" font-style="italic" fill="#8A8776" text-anchor="middle">
-              Fill in architecture stages and SVG elements once reading is complete.
-            </text>
-          </svg>
-        </div>
+          <rect data-min="2" x="10" y="92" width="280" height="72" rx="6" fill="none" stroke="var(--ink)" stroke-width="1"/>
+          <text data-min="2" x="150" y="114" text-anchor="middle" font-size="12" fill="var(--ink)" font-weight="600">scalability</text>
+          <text data-min="2" x="150" y="134" text-anchor="middle" font-size="9.5" fill="var(--muted)">load parameters \u2192 performance</text>
+          <text data-min="2" x="150" y="150" text-anchor="middle" font-size="9.5" fill="var(--muted)">percentiles, not averages</text>
 
-        <div class="stage-caption-card">
-          <span id="stage-caption-tag" class="caption-tag">Overview</span>
-          <div id="stage-caption">
-            Chapter notes and interactive stages pending reading completion.
-          </div>
-        </div>
+          <rect data-min="3" x="10" y="174" width="280" height="76" rx="6" fill="none" stroke="var(--ink)" stroke-width="1"/>
+          <text data-min="3" x="150" y="196" text-anchor="middle" font-size="12" fill="var(--ink)" font-weight="600">maintainability</text>
+          <text data-min="3" x="150" y="216" text-anchor="middle" font-size="9.5" fill="var(--muted)">operability · simplicity</text>
+          <text data-min="3" x="150" y="232" text-anchor="middle" font-size="9.5" fill="var(--muted)">evolvability</text>
+        </svg>
+        <figcaption id="stage-caption">stage 1 of 3 — reliability: keep working correctly even when things go wrong.</figcaption>
       </figure>
-    </aside>
+      <div class="stage-nav" id="stage-nav"></div>
+    </div>
 
-    <!-- Right Column: Prose Narrative -->
-    <article class="prose-column">
-      <section class="prose-step" data-stage="1">
-        <div class="step-header" onclick="setStage(1, true)">
-          <span class="step-num">01</span>
-          <h2 class="step-title">Reliability, Scalability, Maintainability</h2>
-        </div>
-        <p>
-          <em>Stub entry for DDIA Chapter 1. Add reading highlights, percentile latency analysis (p99/p999), fan-out architectures (Twitter case study), and maintainability principles here.</em>
-        </p>
+    <div class="prose">
+
+      <section id="s1">
+        <h2 onclick="setStage(1)">01</h2>
+        <h3>A fault is not a failure</h3>
+        <p>Reliability means the system keeps working correctly even in the face of hardware faults, software bugs, and human error. The important distinction: a <b>fault</b> is one component deviating from its spec; a <b>failure</b> is the whole system letting the user down. Good fault-tolerant design is entirely about the gap between those two — stopping faults from ever becoming failures, rather than pretending faults won't happen.</p>
+        <div class="term"><b>Hardware faults</b> are usually random and independent — one disk dying doesn't predict another. <b>Software faults</b> are systematic and correlated across nodes, which is why they cause disproportionately more outages. <b>Human error</b> was found to be the leading cause of outages in one large study of internet services — ahead of hardware.</div>
+        <p>Counterintuitively, some of the most reliable systems deliberately increase the rate of faults — Netflix's Chaos Monkey randomly kills processes in production — because it's the only way to keep fault-tolerance machinery genuinely exercised instead of untested and rotting.</p>
       </section>
-    </article>
-  </main>
 
-  <footer class="article-footer">
-    <span>System Design Essentials</span>
-    <span>Source: Martin Kleppmann, Ch. 1</span>
-  </footer>
+      <section id="s2">
+        <h2 onclick="setStage(2)">02</h2>
+        <h3>Scalability is a question, not a label</h3>
+        <p>"Is X scalable" is close to a meaningless question on its own. The real question is: if load grows in a specific way, what are your options? Answering that requires describing load with real numbers first — requests/sec, read:write ratio, whatever's actually the bottleneck for your system.</p>
+        <p>Twitter's timeline problem is the clearest illustration of why this matters. Try the toggle below.</p>
 
-  <script>
-    // Define captions per stage once chapter stages are mapped
-    const captions = {
-      1: {
-        tag: "Stage 01 — Baseline",
-        text: "Chapter stub awaiting completion."
-      }
-    };
+        <div class="toggle-row">
+          <button id="btn-read" class="on" onclick="setFanout('read')">fan-out on read</button>
+          <button id="btn-write" onclick="setFanout('write')">fan-out on write</button>
+        </div>
+        <div class="fanout-stats">
+          <div><div class="num" id="stat-write">4.6k/s</div><div class="lbl">writes to serve</div></div>
+          <div><div class="num" id="stat-read">300k/s</div><div class="lbl">reads to serve</div></div>
+          <div><div class="num" id="stat-note">simple query, slow at read time</div><div class="lbl">tradeoff</div></div>
+        </div>
+        <p id="fanout-explain" style="font-size:16px; color:var(--ink-soft);">Fan-out on read: posting is a single insert. Reading a timeline means joining across every followee at request time — cheap to write, expensive to read, and this is what Twitter outgrew first.</p>
 
-    window.addEventListener('DOMContentLoaded', () => {
-      // Empty stage list ready for reader
-      window.buildStageNav('#stage-nav-container', 1, captions);
-    });
-  </script>
+        <div class="term"><b>Percentiles beat averages.</b> The mean response time hides how many users actually experienced the slow case. p50, p95, p99 tell you what fraction of requests were faster than a threshold — and high percentiles (tail latency) matter because a single slow backend call can make an entire multi-call request slow, even if only 1% of calls are ever slow individually.</div>
+      </section>
+
+      <section id="s3">
+        <h2 onclick="setStage(3)">03</h2>
+        <h3>Maintainability is where most of the cost lives</h3>
+        <p>Most of a system's lifetime cost isn't building it — it's everything after: fixing bugs, adapting it, keeping it running. Three design principles make that cost lower: <b>operability</b> (can ops keep it healthy), <b>simplicity</b> (can a new engineer understand it), and <b>evolvability</b> (can it change as requirements shift).</p>
+        <div class="term"><b>Accidental vs. inherent complexity.</b> Inherent complexity comes from the actual problem. Accidental complexity comes only from how you happened to implement it — and it's removable. Abstraction is the main tool: SQL hides on-disk structures and concurrency the same way a high-level language hides machine code.</div>
+        <p>None of these three properties are free lunches, and none are checklist items — they're lenses you keep applying as the system's actual load and requirements turn out to be different from what you assumed at design time.</p>
+      </section>
+
+    </div>
+  </div>
+</main>
+
+<footer>
+  <p>Notes from Designing Data-Intensive Applications, ch. 1 — Martin Kleppmann. Click a stage number to jump, or scroll.</p>
+</footer>
+
+<script>
+const stages = [1,2,3];
+const captions = {
+  1:"stage 1 of 3 — reliability: keep working correctly even when things go wrong.",
+  2:"stage 2 of 3 — scalability: describe load first, then reason about growth.",
+  3:"stage 3 of 3 — maintainability: where most of the lifetime cost actually lives."
+};
+const nav = document.getElementById('stage-nav');
+stages.forEach(n => {
+  const b = document.createElement('button');
+  b.textContent = '0'+n+' — jump to stage';
+  b.dataset.n = n;
+  b.onclick = () => { setStage(n); document.getElementById('s'+n).scrollIntoView({behavior:'smooth', block:'start'}); };
+  nav.appendChild(b);
+});
+
+function setStage(n){
+  document.querySelectorAll('[data-min]').forEach(el=>{
+    const min = Number(el.dataset.min);
+    el.style.opacity = n >= min ? '1' : '0.15';
+  });
+  document.getElementById('stage-caption').textContent = captions[n];
+  document.querySelectorAll('.stage-nav button').forEach(b=>{
+    b.classList.toggle('active', Number(b.dataset.n)===n);
+  });
+}
+
+function setFanout(mode){
+  document.getElementById('btn-read').classList.toggle('on', mode==='read');
+  document.getElementById('btn-write').classList.toggle('on', mode==='write');
+  if(mode==='read'){
+    document.getElementById('stat-write').textContent = '4.6k/s';
+    document.getElementById('stat-read').textContent = '300k/s';
+    document.getElementById('stat-note').textContent = 'simple query, slow at read time';
+    document.getElementById('fanout-explain').textContent = "Fan-out on read: posting is a single insert. Reading a timeline means joining across every followee at request time — cheap to write, expensive to read, and this is what Twitter outgrew first.";
+  } else {
+    document.getElementById('stat-write').textContent = '345k/s+';
+    document.getElementById('stat-read').textContent = '~0';
+    document.getElementById('stat-note').textContent = 'cheap read, expensive fan-out write';
+    document.getElementById('fanout-explain').textContent = "Fan-out on write: posting pushes the tweet into every follower's precomputed timeline. Reads become nearly free — but one tweet from a 30M-follower account means 30M+ writes, which is why Twitter ended up hybridizing: fan-out-on-write for most users, fan-out-on-read merged in for celebrities.";
+  }
+}
+
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      const n = Number(e.target.id.replace('s',''));
+      setStage(n);
+    }
+  });
+}, {rootMargin:"-20% 0px -70% 0px"});
+stages.forEach(n=>io.observe(document.getElementById('s'+n)));
+
+setStage(1);
+</script>
 </body>
 </html>

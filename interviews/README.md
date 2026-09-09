@@ -9,7 +9,7 @@
 
 | Chapter | Topic | Notes | Interactive Explainer |
 | :--- | :--- | :--- | :--- |
-| `01` | **Scale from Zero to Millions of Users** | [notes.md](file:///Users/steveaustine/PROJECTS/SYSTEM-DESIGN-ESSENTIALS/interviews/01-scale-to-millions/notes.md) | [article.html](file:///Users/steveaustine/PROJECTS/SYSTEM-DESIGN-ESSENTIALS/interviews/01-scale-to-millions/article.html) |
+| `01` | **Scale from Zero to Millions of Users** | [notes.md](01-scale-to-millions/notes.md) | [article.html](01-scale-to-millions/article.html) |
 
 ---
 
