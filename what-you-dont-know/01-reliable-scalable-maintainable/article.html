@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>01 — Reliable, Scalable, Maintainable Applications | System Design Essentials</title>
+  <meta name="description" content="Visual explainer and senior-engineer depth for DDIA Chapter 1: Reliability, Scalability, and Maintainability.">
+  <link rel="stylesheet" href="../../_shared/theme.css">
+  <script src="../../_shared/scrollytelling.js" defer></script>
+</head>
+<body>
+
+  <nav class="site-nav">
+    <a href="../README.md">← What You Don't Know Track</a>
+    <span class="track-badge">DDIA · Ch. 01</span>
+    <a href="../../README.md">Index</a>
+  </nav>
+
+  <header class="article-header">
+    <div class="article-meta">
+      <span>Chapter 01</span>
+      <span>•</span>
+      <span class="source-ref">Martin Kleppmann, Designing Data-Intensive Applications</span>
+    </div>
+    <h1 class="article-title">Reliable, Scalable, Maintainable Applications</h1>
+    <p class="article-dek">
+      The core foundations of data-intensive systems. Moving beyond buzzwords to examine the conflicting tensions between fault tolerance, load parameters, and operational evolvability.
+    </p>
+  </header>
+
+  <main class="scrolly-container">
+    <!-- Left Column: Sticky Diagram -->
+    <aside class="diagram-column">
+      <div id="stage-nav-container" class="stage-nav"></div>
+
+      <figure class="diagram-frame">
+        <div class="diagram-svg-wrap">
+          <svg viewBox="0 0 800 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- diagram TODO once chapter is finished -->
+            <rect x="50" y="50" width="700" height="400" rx="8" fill="#FAFAF7" stroke="#CFCCBC" stroke-width="1.5" stroke-dasharray="6 6"/>
+            <text x="400" y="240" font-family="'IBM Plex Mono', monospace" font-size="14" font-weight="600" fill="#8A8776" text-anchor="middle">
+              <!-- diagram TODO once chapter is finished -->
+              [ DIAGRAM STUB — DDIA CH 01 ]
+            </text>
+            <text x="400" y="270" font-family="'Source Serif 4', serif" font-size="13" font-style="italic" fill="#8A8776" text-anchor="middle">
+              Fill in architecture stages and SVG elements once reading is complete.
+            </text>
+          </svg>
+        </div>
+
+        <div class="stage-caption-card">
+          <span id="stage-caption-tag" class="caption-tag">Overview</span>
+          <div id="stage-caption">
+            Chapter notes and interactive stages pending reading completion.
+          </div>
+        </div>
+      </figure>
+    </aside>
+
+    <!-- Right Column: Prose Narrative -->
+    <article class="prose-column">
+      <section class="prose-step" data-stage="1">
+        <div class="step-header" onclick="setStage(1, true)">
+          <span class="step-num">01</span>
+          <h2 class="step-title">Reliability, Scalability, Maintainability</h2>
+        </div>
+        <p>
+          <em>Stub entry for DDIA Chapter 1. Add reading highlights, percentile latency analysis (p99/p999), fan-out architectures (Twitter case study), and maintainability principles here.</em>
+        </p>
+      </section>
+    </article>
+  </main>
+
+  <footer class="article-footer">
+    <span>System Design Essentials</span>
+    <span>Source: Martin Kleppmann, Ch. 1</span>
+  </footer>
+
+  <script>
+    // Define captions per stage once chapter stages are mapped
+    const captions = {
+      1: {
+        tag: "Stage 01 — Baseline",
+        text: "Chapter stub awaiting completion."
+      }
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      // Empty stage list ready for reader
+      window.buildStageNav('#stage-nav-container', 1, captions);
+    });
+  </script>
+</body>
+</html>

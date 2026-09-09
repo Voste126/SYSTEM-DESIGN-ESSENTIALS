@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>01 — Scale from Zero to Millions of Users | System Design Essentials</title>
+  <meta name="description" content="An interactive visual explainer of scaling an architecture from a single server to millions of users, following Alex Xu's System Design Interview Chapter 1.">
+  <link rel="stylesheet" href="../../_shared/theme.css">
+  <script src="../../_shared/scrollytelling.js" defer></script>
+</head>
+<body>
+
+  <nav class="site-nav">
+    <a href="../README.md">← Interviews Track</a>
+    <span class="track-badge">System Design Interview · Ch. 01</span>
+    <a href="../../README.md">Index</a>
+  </nav>
+
+  <header class="article-header">
+    <div class="article-meta">
+      <span>Chapter 01</span>
+      <span>•</span>
+      <span class="source-ref">Alex Xu, System Design Interview Vol 1</span>
+    </div>
+    <h1 class="article-title">Scale From Zero to Millions of Users</h1>
+    <p class="article-dek">
+      Every high-scale system starts as a single box. The journey to millions of concurrent users isn't about magical frameworks—it is a repeatable sequence of isolating bottlenecks, decoupling state, and introducing caching tiers.
+    </p>
+  </header>
+
+  <main class="scrolly-container">
+    <!-- Left Column: Sticky Diagram -->
+    <aside class="diagram-column">
+      <div id="stage-nav-container" class="stage-nav"></div>
+
+      <figure class="diagram-frame">
+        <div class="diagram-svg-wrap">
+          <svg viewBox="0 0 820 640" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#1D2321"/>
+              </marker>
+              <marker id="arrow-accent" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#B9762B"/>
+              </marker>
+              <marker id="arrow-muted" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#8A8776"/>
+              </marker>
+              <filter id="soft-shadow" x="-8%" y="-8%" width="120%" height="120%">
+                <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1D2321" flood-opacity="0.08"/>
+              </filter>
+            </defs>
+
+            <!-- Grid backdrop subtle guides -->
+            <rect width="820" height="640" rx="8" fill="#FAFAF7"/>
+            <path d="M 40 180 L 780 180 M 40 340 L 780 340 M 40 480 L 780 480" stroke="#CFCCBC" stroke-dasharray="3 4" stroke-opacity="0.5"/>
+
+            <!-- ==========================================
+                 STAGE 1: Clients, DNS, and Monolith Server
+                 ========================================== -->
+            <g id="stage-1-clients" data-min="1">
+              <!-- Users / Mobile / Web -->
+              <rect x="40" y="55" width="130" height="70" rx="6" fill="#EEEDE6" stroke="#1D2321" stroke-width="1.75" filter="url(#soft-shadow)"/>
+              <text x="105" y="86" font-family="'IBM Plex Mono', monospace" font-size="12" font-weight="600" fill="#1D2321" text-anchor="middle">CLIENTS</text>
+              <text x="105" y="105" font-family="'Source Serif 4', serif" font-size="11" fill="#4B4A42" text-anchor="middle">Browser &amp; Mobile</text>
+
+              <!-- DNS -->
+              <rect x="230" y="55" width="120" height="70" rx="6" fill="#E6E4D8" stroke="#1D2321" stroke-width="1.75"/>
+              <text x="290" y="86" font-family="'IBM Plex Mono', monospace" font-size="12" font-weight="600" fill="#1D2321" text-anchor="middle">DNS</text>
+              <text x="290" y="105" font-family="'IBM Plex Mono', monospace" font-size="10" fill="#8A8776" text-anchor="middle">api.mysite.com</text>
+
+              <!-- DNS Query Arrow -->
+              <path d="M 170 75 L 222 75" stroke="#8A8776" stroke-width="1.5" stroke-dasharray="3 3" marker-end="url(#arrow-muted)"/>
+            </g>
+
+            <!-- Stage 1 Single Server (Replaced in Stage 2 by separate DB, then Stage 3 by LB) -->
+            <g id="stage-1-single-server" data-min="1" data-max="1">
+              <rect x="440" y="55" width="220" height="85" rx="6" fill="#E9D3AA" stroke="#B9762B" stroke-width="2" filter="url(#soft-shadow)"/>
+              <text x="550" y="88" font-family="'IBM Plex Mono', monospace" font-size="13" font-weight="600" fill="#1D2321" text-anchor="middle">SINGLE SERVER</text>
+              <text x="550" y="108" font-family="'IBM Plex Mono', monospace" font-size="10" fill="#4B4A42" text-anchor="middle">Web + App + Database</text>
+              <text x="550" y="125" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#B9762B" text-anchor="middle">Single Point of Failure (SPOF)</text>
+              <path d="M 170 100 Q 305 140 432 105" stroke="#1D2321" stroke-width="1.75" marker-end="url(#arrow)"/>
+            </g>
+
+            <!-- ==========================================
+                 STAGE 2: Separate Database Tier
+                 ========================================== -->
+            <g id="stage-2-separate-db" data-min="2" data-max="3">
+              <!-- Web App Server Box (when separated before stage 3 LB) -->
+              <rect x="420" y="60" width="150" height="65" rx="6" fill="#EEEDE6" stroke="#1D2321" stroke-width="1.75"/>
+              <text x="495" y="90" font-family="'IBM Plex Mono', monospace" font-size="12" font-weight="600" fill="#1D2321" text-anchor="middle">WEB SERVER</text>
+              <text x="495" y="108" font-family="'IBM Plex Mono', monospace" font-size="10" fill="#8A8776" text-anchor="middle">Stateless App Logic</text>
+
+              <!-- DB Server Box -->
+              <rect x="630" y="60" width="150" height="65" rx="6" fill="#E6E4D8" stroke="#1D2321" stroke-width="1.75"/>
+              <text x="705" y="90" font-family="'IBM Plex Mono', monospace" font-size="12" font-weight="600" fill="#1D2321" text-anchor="middle">DATABASE</text>
+              <text x="705" y="108" font-family="'IBM Plex Mono', monospace" font-size="10" fill="#8A8776" text-anchor="middle">Relational (MySQL)</text>
+
+              <path d="M 570 92 L 622 92" stroke="#1D2321" stroke-width="1.75" marker-end="url(#arrow)"/>
+            </g>
+
+            <!-- ==========================================
+                 STAGE 3: Load Balancer & Horizontal Web Tier
+                 ========================================== -->
+            <g id="stage-3-load-balancer" data-min="3">
+              <!-- Load Balancer -->
+              <rect x="230" y="210" width="130" height="85" rx="6" fill="#E9D3AA" stroke="#B9762B" stroke-width="2" filter="url(#soft-shadow)"/>
+              <text x="295" y="242" font-family="'IBM Plex Mono', monospace" font-size="12" font-weight="600" fill="#1D2321" text-anchor="middle">LOAD BALANCER</text>
+              <text x="295" y="260" font-family="'IBM Plex Mono', monospace" font-size="9.5" fill="#4B4A42" text-anchor="middle">Public IP / SSL Term</text>
+              <text x="295" y="278" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#B9762B" text-anchor="middle">Round Robin / Health</text>
+
+              <!-- Connection from Clients to LB -->
+              <path d="M 105 125 L 105 252 L 222 252" stroke="#1D2321" stroke-width="1.75" marker-end="url(#arrow)"/>
+
+              <!-- Horizontal Web Servers Cluster -->
+              <g id="web-servers-cluster">
+                <rect x="420" y="180" width="130" height="52" rx="5" fill="#EEEDE6" stroke="#1D2321" stroke-width="1.5"/>
+                <text x="485" y="206" font-family="'IBM Plex Mono', monospace" font-size="11" font-weight="600" fill="#1D2321" text-anchor="middle">WEB NODE 1</text>
+                <text x="485" y="222" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#8A8776" text-anchor="middle">Private IP · Stateless</text>
+
+                <rect x="420" y="245" width="130" height="52" rx="5" fill="#EEEDE6" stroke="#1D2321" stroke-width="1.5"/>
+                <text x="485" y="271" font-family="'IBM Plex Mono', monospace" font-size="11" font-weight="600" fill="#1D2321" text-anchor="middle">WEB NODE 2</text>
+                <text x="485" y="287" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#8A8776" text-anchor="middle">Private IP · Stateless</text>
+
+                <!-- LB to Web Nodes -->
+                <path d="M 360 235 L 412 208" stroke="#1D2321" stroke-width="1.5" marker-end="url(#arrow)"/>
+                <path d="M 360 265 L 412 271" stroke="#1D2321" stroke-width="1.5" marker-end="url(#arrow)"/>
+              </g>
+            </g>
+
+            <!-- ==========================================
+                 STAGE 4: Database Replication (Master/Slave)
+                 ========================================== -->
+            <g id="stage-4-db-replication" data-min="4" data-max="7">
+              <!-- Primary / Master DB -->
+              <rect x="640" y="175" width="140" height="60" rx="5" fill="#E6E4D8" stroke="#B9762B" stroke-width="1.75"/>
+              <text x="710" y="200" font-family="'IBM Plex Mono', monospace" font-size="11" font-weight="600" fill="#1D2321" text-anchor="middle">PRIMARY DB</text>
+              <text x="710" y="218" font-family="'IBM Plex Mono', monospace" font-size="9.5" fill="#B9762B" text-anchor="middle">Writes Only (Master)</text>
+
+              <!-- Read Replica 1 -->
+              <rect x="640" y="250" width="140" height="50" rx="5" fill="#EEEDE6" stroke="#1D2321" stroke-width="1.5"/>
+              <text x="710" y="272" font-family="'IBM Plex Mono', monospace" font-size="10.5" font-weight="600" fill="#1D2321" text-anchor="middle">READ REPLICA 1</text>
+              <text x="710" y="288" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#8A8776" text-anchor="middle">Reads (Slave)</text>
+
+              <!-- Read Replica 2 -->
+              <rect x="640" y="310" width="140" height="50" rx="5" fill="#EEEDE6" stroke="#1D2321" stroke-width="1.5"/>
+              <text x="710" y="332" font-family="'IBM Plex Mono', monospace" font-size="10.5" font-weight="600" fill="#1D2321" text-anchor="middle">READ REPLICA 2</text>
+              <text x="710" y="348" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#8A8776" text-anchor="middle">Reads (Slave)</text>
+
+              <!-- Replication Stream -->
+              <path d="M 710 235 L 710 244" stroke="#B9762B" stroke-width="1.5" stroke-dasharray="2 2" marker-end="url(#arrow-accent)"/>
+              <path d="M 710 300 L 710 304" stroke="#B9762B" stroke-width="1.5" stroke-dasharray="2 2" marker-end="url(#arrow-accent)"/>
+
+              <!-- Web Node to Master write -->
+              <path d="M 550 200 L 632 200" stroke="#B9762B" stroke-width="1.5" marker-end="url(#arrow-accent)"/>
+              <!-- Web Node to Replica read -->
+              <path d="M 550 270 L 632 275" stroke="#1D2321" stroke-width="1.5" marker-end="url(#arrow)"/>
+            </g>
+
+            <!-- ==========================================
+                 STAGE 5: Cache Tier (In-Memory)
+                 ========================================== -->
+            <g id="stage-5-cache-tier" data-min="5">
+              <rect x="420" y="335" width="130" height="65" rx="6" fill="#FAFAF7" stroke="#B9762B" stroke-width="1.75" stroke-dasharray="4 2"/>
+              <text x="485" y="362" font-family="'IBM Plex Mono', monospace" font-size="12" font-weight="600" fill="#B9762B" text-anchor="middle">CACHE TIER</text>
+              <text x="485" y="380" font-family="'IBM Plex Mono', monospace" font-size="9.5" fill="#4B4A42" text-anchor="middle">Redis / Memcached</text>
+              <text x="485" y="394" font-family="'IBM Plex Mono', monospace" font-size="8.5" fill="#8A8776" text-anchor="middle">Read-through / TTL</text>
+
+              <!-- Web to Cache query -->
+              <path d="M 485 297 L 485 328" stroke="#B9762B" stroke-width="1.5" marker-end="url(#arrow-accent)"/>
+            </g>
+
+            <!-- ==========================================
+                 STAGE 6: CDN (Content Delivery Network)
+                 ========================================== -->
+            <g id="stage-6-cdn" data-min="6">
+              <rect x="40" y="335" width="130" height="65" rx="6" fill="#E6E4D8" stroke="#1D2321" stroke-width="1.75"/>
+              <text x="105" y="362" font-family="'IBM Plex Mono', monospace" font-size="12" font-weight="600" fill="#1D2321" text-anchor="middle">CDN EDGE</text>
+              <text x="105" y="380" font-family="'IBM Plex Mono', monospace" font-size="9.5" fill="#4B4A42" text-anchor="middle">Static Content</text>
+              <text x="105" y="394" font-family="'IBM Plex Mono', monospace" font-size="8.5" fill="#8A8776" text-anchor="middle">JS, CSS, Images, Video</text>
+
+              <!-- Client static asset request -->
+              <path d="M 80 125 L 80 328" stroke="#B9762B" stroke-width="1.5" marker-end="url(#arrow-accent)"/>
+              <!-- Origin pull from web node -->
+              <path d="M 170 365 L 412 365" stroke="#8A8776" stroke-width="1.25" stroke-dasharray="3 3"/>
+            </g>
+
+            <!-- ==========================================
+                 STAGE 7: Message Queue & Workers
+                 ========================================== -->
+            <g id="stage-7-message-queue" data-min="7">
+              <!-- Queue Box -->
+              <rect x="230" y="445" width="130" height="65" rx="6" fill="#EEEDE6" stroke="#1D2321" stroke-width="1.75"/>
+              <text x="295" y="472" font-family="'IBM Plex Mono', monospace" font-size="11.5" font-weight="600" fill="#1D2321" text-anchor="middle">MESSAGE QUEUE</text>
+              <text x="295" y="490" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#4B4A42" text-anchor="middle">Kafka / RabbitMQ</text>
+              <text x="295" y="503" font-family="'IBM Plex Mono', monospace" font-size="8.5" fill="#B9762B" text-anchor="middle">Async Decoupling</text>
+
+              <!-- Worker Fleet -->
+              <rect x="420" y="445" width="130" height="65" rx="6" fill="#EEEDE6" stroke="#1D2321" stroke-width="1.75"/>
+              <text x="485" y="472" font-family="'IBM Plex Mono', monospace" font-size="11.5" font-weight="600" fill="#1D2321" text-anchor="middle">WORKER FLEET</text>
+              <text x="485" y="490" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#4B4A42" text-anchor="middle">Heavy / Batch Tasks</text>
+              <text x="485" y="503" font-family="'IBM Plex Mono', monospace" font-size="8.5" fill="#8A8776" text-anchor="middle">Video, Email, Billing</text>
+
+              <!-- Web Node to Queue (Publish) -->
+              <path d="M 420 280 Q 340 370 295 437" stroke="#1D2321" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+              <!-- Queue to Worker (Consume) -->
+              <path d="M 360 478 L 412 478" stroke="#1D2321" stroke-width="1.5" marker-end="url(#arrow)"/>
+            </g>
+
+            <!-- ==========================================
+                 STAGE 8: Database Sharding
+                 ========================================== -->
+            <g id="stage-8-sharding" data-min="8">
+              <rect x="620" y="415" width="170" height="150" rx="8" fill="#E6E4D8" stroke="#B9762B" stroke-width="2" filter="url(#soft-shadow)"/>
+              <text x="705" y="438" font-family="'IBM Plex Mono', monospace" font-size="12" font-weight="700" fill="#B9762B" text-anchor="middle">SHARDED DB TIER</text>
+              <text x="705" y="454" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#4B4A42" text-anchor="middle">Hash(user_id) % 3</text>
+
+              <!-- Shard A -->
+              <rect x="635" y="465" width="140" height="26" rx="4" fill="#FAFAF7" stroke="#1D2321" stroke-width="1"/>
+              <text x="705" y="482" font-family="'IBM Plex Mono', monospace" font-size="9.5" fill="#1D2321" text-anchor="middle">SHARD 0: Users 0-999k</text>
+
+              <!-- Shard B -->
+              <rect x="635" y="497" width="140" height="26" rx="4" fill="#FAFAF7" stroke="#1D2321" stroke-width="1"/>
+              <text x="705" y="514" font-family="'IBM Plex Mono', monospace" font-size="9.5" fill="#1D2321" text-anchor="middle">SHARD 1: Users 1M-2M</text>
+
+              <!-- Shard C -->
+              <rect x="635" y="529" width="140" height="26" rx="4" fill="#FAFAF7" stroke="#1D2321" stroke-width="1"/>
+              <text x="705" y="546" font-family="'IBM Plex Mono', monospace" font-size="9.5" fill="#1D2321" text-anchor="middle">SHARD 2: Users 2M+</text>
+
+              <!-- Worker / Web to Shard tier -->
+              <path d="M 550 490 L 612 490" stroke="#B9762B" stroke-width="1.75" marker-end="url(#arrow-accent)"/>
+            </g>
+          </svg>
+        </div>
+
+        <div class="stage-caption-card">
+          <span id="stage-caption-tag" class="caption-tag">Stage 01 — Baseline</span>
+          <div id="stage-caption">
+            Everything lives on a single machine: web server, application logic, and database. Zero network overhead, but a single crash knocks out the entire business.
+          </div>
+        </div>
+      </figure>
+    </aside>
+
+    <!-- Right Column: Prose Narrative -->
+    <article class="prose-column">
+
+      <!-- Step 1 -->
+      <section class="prose-step" data-stage="1">
+        <div class="step-header" onclick="setStage(1, true)">
+          <span class="step-num">01</span>
+          <h2 class="step-title">Single Server Setup</h2>
+        </div>
+        <p>
+          To start, everything runs on a single server. A user types a domain name like <span class="term">api.mysite.com</span> into their browser. The DNS resolves this domain into a public IP address, and HTTP/HTTPS requests flow directly to a solitary virtual server running the web framework (Django, Rails, Node), application business logic, and the database engine.
+        </p>
+        <p>
+          This is the fastest, simplest architecture to develop against. There are zero inter-service network hops, no distributed race conditions, and transactions are locally ACID.
+        </p>
+        <div class="aside-box">
+          <div class="aside-title">Why this stops working</div>
+          <p>
+            When traffic grows, CPU and memory contend between web requests and SQL queries. Worse, this machine represents an absolute <span class="term">Single Point of Failure (SPOF)</span>: if the server restarts or runs out of disk, 100% of your users go down.
+          </p>
+        </div>
+      </section>
+
+      <!-- Step 2 -->
+      <section class="prose-step" data-stage="2">
+        <div class="step-header" onclick="setStage(2, true)">
+          <span class="step-num">02</span>
+          <h2 class="step-title">Separate the Database</h2>
+        </div>
+        <p>
+          The first architectural split separates the <span class="term">Web Tier</span> from the <span class="term">Database Tier</span> onto two distinct physical machines.
+        </p>
+        <p>
+          Separating them allows you to scale them independently. A web server is typically CPU-bound (handling serialization, business logic, SSL handshakes), while a database is I/O-bound (disk reads/writes, buffer pool memory). You can now choose a high-compute instance for your app server and a high-memory, high-IOPS NVMe instance for your database.
+        </p>
+        <div class="aside-box aside-amber">
+          <div class="aside-title">The Database Dilemma</div>
+          <p>
+            Do you choose Relational (MySQL, Postgres) or NoSQL (Couchbase, DynamoDB, Cassandra)? Default to relational unless you require super-low latency key-value lookups, massive unstructured datasets, or serialize data natively as JSON.
+          </p>
+        </div>
+      </section>
+
+      <!-- Step 3 -->
+      <section class="prose-step" data-stage="3">
+        <div class="step-header" onclick="setStage(3, true)">
+          <span class="step-num">03</span>
+          <h2 class="step-title">Load Balancer &amp; Horizontal Web Tier</h2>
+        </div>
+        <p>
+          A single web server will eventually saturate its socket capacity or CPU. Instead of vertical scaling (buying a bigger, exorbitantly priced machine), we scale horizontally by putting a <span class="term">Load Balancer</span> in front of multiple web nodes.
+        </p>
+        <p>
+          Users connect to the public IP of the load balancer. The load balancer uses private IP addresses to distribute incoming requests across web server nodes using algorithms like round-robin or least connections.
+        </p>
+        <ul class="prose-list">
+          <li><strong>Failover:</strong> If Web Node 1 crashes or fails health checks, all traffic is instantly routed to Web Node 2.</li>
+          <li><strong>Traffic bursts:</strong> During peak hours, auto-scaling groups can spin up new web servers on demand.</li>
+        </ul>
+      </section>
+
+      <!-- Step 4 -->
+      <section class="prose-step" data-stage="4">
+        <div class="step-header" onclick="setStage(4, true)">
+          <span class="step-num">04</span>
+          <h2 class="step-title">Database Replication</h2>
+        </div>
+        <p>
+          While the web tier is now horizontally scalable and resilient, the database is still a single bottleneck. Most consumer web systems have a read-heavy profile (often 10:1 or 100:1 read-to-write ratio).
+        </p>
+        <p>
+          We implement a <span class="term">Primary / Replica</span> (Master-Slave) topology. The Primary database accepts all write operations (<code>INSERT</code>, <code>UPDATE</code>, <code>DELETE</code>), while multiple read replicas asynchronously replicate the binary log from the master to satisfy read queries.
+        </p>
+        <div class="aside-box">
+          <div class="aside-title">Failover Mechanics</div>
+          <p>
+            If a read replica goes down, read queries shift to another replica. If the Primary dies, a replica is promoted to primary, and data sync scripts reconcile replication lag.
+          </p>
+        </div>
+      </section>
+
+      <!-- Step 5 -->
+      <section class="prose-step" data-stage="5">
+        <div class="step-header" onclick="setStage(5, true)">
+          <span class="step-num">05</span>
+          <h2 class="step-title">Cache Tier</h2>
+        </div>
+        <p>
+          Even with read replicas, disk I/O remains orders of magnitude slower than memory. A <span class="term">Cache Tier</span> stores frequently requested data directly in RAM (e.g. Redis or Memcached), intercepting queries before they touch the database.
+        </p>
+        <p>
+          Under the standard <span class="term">Cache-Aside</span> pattern:
+        </p>
+        <ul class="prose-list">
+          <li>The web server first checks Redis for the key.</li>
+          <li>If it exists (cache hit), data returns in sub-millisecond time.</li>
+          <li>If not (cache miss), the server fetches from the database, writes into cache with a TTL (Time-To-Live), and returns the result.</li>
+        </ul>
+        <div class="aside-box aside-amber">
+          <div class="aside-title">Cache Invalidation Pitfall</div>
+          <p>
+            Always set an expiration policy (TTL) so stale data does not persist forever. Use an eviction strategy such as LRU (Least Recently Used) when memory saturates.
+          </p>
+        </div>
+      </section>
+
+      <!-- Step 6 -->
+      <section class="prose-step" data-stage="6">
+        <div class="step-header" onclick="setStage(6, true)">
+          <span class="step-num">06</span>
+          <h2 class="step-title">Content Delivery Network (CDN)</h2>
+        </div>
+        <p>
+          Web servers still waste bandwidth and compute serving heavy static assets—images, JavaScript bundles, CSS stylesheets, and video clips. Furthermore, users physically distant from your data center suffer high latency.
+        </p>
+        <p>
+          A <span class="term">CDN</span> is a geographically distributed network of edge servers. When a user requests an asset, the edge server nearest to them delivers it. If the file is not on the edge, it fetches it once from your origin server or S3 bucket, caches it locally, and serves all future regional users instantly.
+        </p>
+      </section>
+
+      <!-- Step 7 -->
+      <section class="prose-step" data-stage="7">
+        <div class="step-header" onclick="setStage(7, true)">
+          <span class="step-num">07</span>
+          <h2 class="step-title">Stateless Web Tier &amp; Message Queues</h2>
+        </div>
+        <p>
+          To scale web nodes freely, servers must be completely <span class="term">stateless</span>. User session state and cart data must never be saved in local memory; they belong in a distributed session cache (Redis) or persistent store. This allows any web node to handle any user's request.
+        </p>
+        <p>
+          Next, long-running background tasks (transcoding video, sending emails, generating invoice PDFs) must not block synchronous HTTP request-response cycles. We introduce a <span class="term">Message Queue</span> (Kafka, RabbitMQ, SQS). Web servers publish jobs into the queue, and dedicated worker processes consume and execute them asynchronously.
+        </p>
+      </section>
+
+      <!-- Step 8 -->
+      <section class="prose-step" data-stage="8">
+        <div class="step-header" onclick="setStage(8, true)">
+          <span class="step-num">08</span>
+          <h2 class="step-title">Database Sharding</h2>
+        </div>
+        <p>
+          When write volume and database storage exceed what a single primary node can physically hold, horizontal database partitioning—known as <span class="term">Sharding</span>—becomes mandatory.
+        </p>
+        <p>
+          The data is split across multiple independent database instances. A <span class="term">Shard Key</span> (often <code>user_id</code> or a tenant ID) determines which shard stores a specific record. For example, <code>hash(user_id) % 3</code> routes requests deterministically.
+        </p>
+        <div class="aside-box">
+          <div class="aside-title">The Real-World Cost of Sharding</div>
+          <p>
+            Sharding introduces enormous architectural complexity: cross-shard joins become impossible or painfully slow, data rebalancing is required when hot shards fill up, and distributed transactions require careful two-phase commits or eventual consistency sagas.
+          </p>
+        </div>
+      </section>
+
+    </article>
+  </main>
+
+  <footer class="article-footer">
+    <span>System Design Essentials</span>
+    <span>Source: Alex Xu, Ch. 1</span>
+  </footer>
+
+  <script>
+    const captions = {
+      1: {
+        tag: "Stage 01 — Monolith",
+        text: "Single server hosting web app and database. Zero inter-network latency, but severe contention and an absolute single point of failure."
+      },
+      2: {
+        tag: "Stage 02 — Decouple Tiers",
+        text: "Web and database tiers decoupled onto dedicated instances. Compute-heavy app logic and I/O-heavy database operations scale independently."
+      },
+      3: {
+        tag: "Stage 03 — Load Balancing",
+        text: "Public load balancer distributes requests across multiple private stateless web nodes, delivering automatic failover and horizontal scalability."
+      },
+      4: {
+        tag: "Stage 04 — DB Replication",
+        text: "Primary database accepts all writes and replicates binary logs asynchronously to multiple Read Replicas, multiplying read throughput."
+      },
+      5: {
+        tag: "Stage 05 — Cache Tier",
+        text: "In-memory caching (Redis) intercepts queries before touching disk. Cache-aside pattern drastically reduces database read latency."
+      },
+      6: {
+        tag: "Stage 06 — Edge CDN",
+        text: "Static assets (images, CSS, JS) cached at regional edge locations worldwide, offloading origin web servers and slashing TTFB."
+      },
+      7: {
+        tag: "Stage 07 — Message Queues",
+        text: "Stateless web tier publishes heavy tasks to a message queue. Background workers process jobs asynchronously without blocking user requests."
+      },
+      8: {
+        tag: "Stage 08 — DB Sharding",
+        text: "Horizontal database partitioning splits tables across distinct physical shards using a shard key, removing the single master write bottleneck."
+      }
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      window.buildStageNav('#stage-nav-container', 8, captions);
+    });
+  </script>
+</body>
+</html>
