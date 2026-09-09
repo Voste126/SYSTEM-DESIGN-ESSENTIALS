@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Systems knowledge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EEEDE6; --paper-2:#E6E4D8; --ink:#1D2321; --ink-soft:#4B4A42;
+  --muted:#8A8776; --line:#CFCCBC; --accent:#B9762B;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:'Source Serif 4', Georgia, serif; font-size:19px; line-height:1.65;
+}
+.mono{font-family:'IBM Plex Mono', monospace}
+header{max-width:720px; margin:0 auto; padding:5rem 24px 2rem;}
+header p.kicker{
+  font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--accent);
+  letter-spacing:0.02em; margin:0 0 1.25rem;
+}
+h1{font-size:40px; font-weight:600; line-height:1.15; margin:0 0 1rem;}
+header p.dek{font-size:18px; color:var(--ink-soft); max-width:520px; margin:0;}
+main{max-width:720px; margin:0 auto; padding:1rem 24px 6rem; display:grid; gap:20px;}
+a.track{
+  display:block; padding:1.75rem; background:var(--paper-2); border:1px solid var(--line);
+  border-radius:6px; text-decoration:none; color:inherit; transition:border-color .15s;
+}
+a.track:hover{border-color:var(--accent);}
+a.track p.label{font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--accent); margin:0 0 0.6rem;}
+a.track h2{font-size:24px; font-weight:600; margin:0 0 0.5rem;}
+a.track p.desc{font-size:16px; color:var(--ink-soft); margin:0; max-width:56ch;}
+footer{max-width:720px; margin:0 auto; padding:2rem 24px 4rem; color:var(--muted); font-size:14px; border-top:1px solid var(--line);}
+</style>
+</head>
+<body>
+<header>
+  <p class="kicker">a working notebook, not a finished one</p>
+  <h1>Systems knowledge</h1>
+  <p class="dek">Notes and interactive explainers from two books read side by side — one for interview patterns, one for the depth that doesn't show up in a rubric.</p>
+</header>
+<main>
+  <a class="track" href="interviews/">
+    <p class="label">interview prep</p>
+    <h2>System Design Interview — Alex Xu</h2>
+    <p class="desc">Pattern-oriented notes: the technique, the tell that signals it, and the follow-up question that usually comes next.</p>
+  </a>
+  <a class="track" href="what-you-dont-know/">
+    <p class="label">senior engineer track</p>
+    <h2>Designing Data-Intensive Applications — Martin Kleppmann</h2>
+    <p class="desc">Depth notes on the tradeoffs that only matter once you're the one making the call in production.</p>
+  </a>
+</main>
+<footer>
+  Each chapter has a short written note and an interactive diagram you can click or scroll through.
+</footer>
+</body>
+</html>
