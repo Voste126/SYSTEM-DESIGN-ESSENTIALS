@@ -28,15 +28,15 @@ Use this minimal shell:
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NN — [Topic Title] | System Design Essentials</title>
+  <meta name="color-scheme" content="light">
   <link rel="stylesheet" href="../../_shared/theme.css">
   <script src="../../_shared/scrollytelling.js" defer></script>
 </head>
 <body>
 
-  <nav class="site-nav">
-    <a href="../README.md">← Back to Track</a>
-    <span class="track-badge">[Track Name] · Ch. NN</span>
-    <a href="../../README.md">Index</a>
+  <nav class="top-nav">
+    <a href="../index.html" class="nav-btn back">&larr; <span class="track-name">TRACK_NAME</span></a>
+    <a href="../../index.html" class="nav-btn">index</a>
   </nav>
 
   <header class="article-header">

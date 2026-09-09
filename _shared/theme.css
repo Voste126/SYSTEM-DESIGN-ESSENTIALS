@@ -12,6 +12,7 @@
   --line: #CFCCBC;
   --accent: #B9762B;
   --accent-soft: #E9D3AA;
+  --accent-dim: #E9D3AA;
 
   /* Typography */
   --font-serif: "Source Serif 4", Georgia, Cambria, "Times New Roman", serif;
@@ -128,8 +129,45 @@ code:not(pre code) {
 }
 
 /* ==========================================================================
-   Header & Metadata
+   Header & Navigation
    ========================================================================== */
+.top-nav {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 1.5rem 24px 0;
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+@media (min-width: 981px) {
+  .top-nav {
+    max-width: var(--container-max);
+    padding: 1.75rem 2.5rem 0;
+  }
+}
+
+.nav-btn {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  color: var(--ink-soft);
+  text-decoration: none;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  transition: border-color .15s, color .15s;
+}
+
+.nav-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.nav-btn.back {
+  color: var(--accent);
+  border-color: var(--accent-dim);
+}
+
 .site-nav {
   padding: 1rem 2rem;
   border-bottom: 1px solid var(--line);
@@ -172,7 +210,7 @@ code:not(pre code) {
 .article-header {
   max-width: var(--container-max);
   margin: 0 auto;
-  padding: 3.5rem 2.5rem 2rem;
+  padding: 2rem 2.5rem 2rem;
   width: 100%;
 }
 
