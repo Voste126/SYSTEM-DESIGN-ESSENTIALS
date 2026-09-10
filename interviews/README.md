@@ -10,6 +10,7 @@
 | Chapter | Topic | Notes | Interactive Explainer |
 | :--- | :--- | :--- | :--- |
 | `01` | **Scale from Zero to Millions of Users** | [notes.md](01-scale-to-millions/notes.md) | [article.html](01-scale-to-millions/article.html) |
+| `02` | **Back-of-the-envelope estimation** | [notes.md](02-back-of-envelope-estimation/notes.md) | [article.html](02-back-of-envelope-estimation/article.html) |
 
 ---
 

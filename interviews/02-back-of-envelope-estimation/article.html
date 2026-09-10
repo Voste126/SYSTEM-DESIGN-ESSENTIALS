@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Back-of-the-envelope estimation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EEEDE6; --paper-2:#E6E4D8; --ink:#1D2321; --ink-soft:#4B4A42;
+  --muted:#8A8776; --line:#CFCCBC; --accent:#B9762B; --accent-dim:#D8C39A;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0; background:var(--paper); color:var(--ink); font-family:'Source Serif 4', Georgia, serif; font-size:19px; line-height:1.65;}
+.mono{font-family:'IBM Plex Mono', monospace}
+.top-nav{max-width:640px; margin:0 auto; padding:1.5rem 24px 0; display:flex; gap:10px;}
+.nav-btn{font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--ink-soft); text-decoration:none; padding:6px 12px; border:1px solid var(--line); border-radius:4px; transition:border-color .15s, color .15s;}
+.nav-btn:hover{border-color:var(--accent); color:var(--accent);}
+.nav-btn.back{color:var(--accent); border-color:var(--accent-dim);}
+header{max-width:640px; margin:0 auto; padding:2.5rem 24px 3rem; border-bottom:1px solid var(--line);}
+header p.kicker{font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--accent); letter-spacing:0.02em; margin:0 0 1.25rem;}
+h1{font-size:40px; font-weight:600; line-height:1.15; margin:0 0 1rem; max-width:520px;}
+header p.dek{font-size:18px; color:var(--ink-soft); max-width:480px; margin:0;}
+main{max-width:940px; margin:0 auto; padding:3rem 24px 6rem;}
+.layout{display:grid; grid-template-columns:320px 1fr; gap:48px; align-items:start;}
+.diagram-col{position:sticky; top:24px;}
+.stage-nav{display:flex; flex-direction:column; gap:2px; margin-top:1.25rem; font-family:'IBM Plex Mono',monospace; font-size:13px;}
+.stage-nav button{all:unset; cursor:pointer; padding:7px 10px; border-radius:3px; color:var(--muted); border-left:2px solid transparent;}
+.stage-nav button.active{color:var(--ink); border-left:2px solid var(--accent); background:var(--paper-2);}
+.stage-nav button:hover{color:var(--ink);}
+figure{margin:0; padding:1.25rem; background:var(--paper-2); border:1px solid var(--line); border-radius:4px;}
+figcaption{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--muted); margin-top:0.75rem; line-height:1.5;}
+.prose section{padding:2.5rem 0; border-bottom:1px solid var(--line); scroll-margin-top:24px;}
+.prose section:last-child{border-bottom:none;}
+.prose h2{font-size:15px; font-family:'IBM Plex Mono',monospace; font-weight:500; color:var(--accent); margin:0 0 0.5rem; cursor:pointer;}
+.prose h3{font-size:26px; font-weight:600; margin:0 0 1rem; line-height:1.25;}
+.prose p{margin:0 0 1rem; max-width:62ch;}
+.term{display:inline-block; margin:0.75rem 0; padding:0.85rem 1rem; background:var(--paper-2); border-left:2px solid var(--accent-dim); font-size:16px; color:var(--ink-soft); max-width:60ch;}
+.term b{color:var(--ink); font-weight:600;}
+table.ref{border-collapse:collapse; font-size:15px; margin:1rem 0 1.5rem; width:100%; max-width:60ch;}
+table.ref th, table.ref td{border-bottom:1px solid var(--line); padding:6px 10px; text-align:left;}
+table.ref th{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); font-weight:500;}
+table.ref td.mono{font-family:'IBM Plex Mono',monospace; font-size:14px;}
+footer{max-width:640px; margin:0 auto; padding:3rem 24px 6rem; color:var(--muted); font-size:15px; border-top:1px solid var(--line);}
+.calc{background:var(--paper-2); border:1px solid var(--line); border-radius:6px; padding:1.5rem; margin:1.25rem 0;}
+.calc .row{display:flex; align-items:center; gap:12px; margin-bottom:10px; font-size:15px;}
+.calc .row label{flex:1; color:var(--ink-soft); font-size:14px;}
+.calc .row input{width:110px; font-family:'IBM Plex Mono',monospace; font-size:14px; padding:5px 8px; border:1px solid var(--line); border-radius:4px; background:var(--paper);}
+.calc-out{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:1.25rem; padding-top:1rem; border-top:1px dashed var(--line);}
+.calc-out div .num{font-family:'IBM Plex Mono',monospace; font-size:22px; color:var(--accent);}
+.calc-out div .lbl{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); margin-top:2px;}
+@media (max-width:860px){ .layout{grid-template-columns:1fr;} .diagram-col{position:static;} h1{font-size:32px;} }
+svg text{font-family:'IBM Plex Mono', monospace;}
+</style>
+</head>
+<body>
+
+<nav class="top-nav">
+  <a href="../index.html" class="nav-btn back">&larr; interviews</a>
+  <a href="../../index.html" class="nav-btn">index</a>
+</nav>
+
+<header>
+  <p class="kicker">interview prep — chapter 02</p>
+  <h1>Back-of-the-envelope estimation</h1>
+  <p class="dek">Before you can argue for an architecture, you need numbers to argue with. Here's the ladder of latencies worth having memorized, and a calculator to actually run the exercise.</p>
+</header>
+
+<main>
+  <div class="layout">
+    <div class="diagram-col">
+      <figure>
+        <svg width="100%" viewBox="0 0 300 300" role="img">
+          <title>Latency ladder, log scale, from L1 cache to cross-datacenter network</title>
+          <g font-size="9" fill="var(--muted)">
+            <text data-min="2" x="4" y="14">L1 cache</text><rect data-min="2" x="110" y="6" width="6" height="10" fill="var(--ink)"/><text data-min="2" x="120" y="14" fill="var(--ink)">0.5 ns</text>
+            <text data-min="2" x="4" y="30">L2 cache</text><rect data-min="2" x="110" y="22" width="40" height="10" fill="var(--ink)"/><text data-min="2" x="154" y="30" fill="var(--ink)">7 ns</text>
+            <text data-min="2" x="4" y="46">memory ref</text><rect data-min="2" x="110" y="38" width="75" height="10" fill="var(--ink)"/><text data-min="2" x="189" y="46" fill="var(--ink)">100 ns</text>
+            <text data-min="2" x="4" y="62">compress 1KB</text><rect data-min="2" x="110" y="54" width="135" height="10" fill="var(--accent)"/><text data-min="2" x="249" y="62" fill="var(--accent)">10 \u03bcs</text>
+            <text data-min="2" x="4" y="78">send 1KB /1Gbps</text><rect data-min="2" x="110" y="70" width="135" height="10" fill="var(--accent)"/><text data-min="2" x="249" y="78" fill="var(--accent)">10 \u03bcs</text>
+            <text data-min="2" x="4" y="94">SSD read 4KB</text><rect data-min="2" x="110" y="86" width="170" height="10" fill="var(--ink-soft)"/><text data-min="2" x="284" y="94" fill="var(--ink-soft)">150 \u03bcs</text>
+            <text data-min="2" x="4" y="110">1MB from memory</text><rect data-min="2" x="110" y="102" width="177" height="10" fill="var(--ink)"/><text data-min="2" x="291" y="110" fill="var(--ink)">250 \u03bcs</text>
+            <text data-min="2" x="4" y="126">RTT same DC</text><rect data-min="2" x="110" y="118" width="186" height="10" fill="var(--accent)"/><text data-min="2" x="300" y="126" fill="var(--accent)">500\u03bcs</text>
+          </g>
+          <g font-size="9" fill="var(--muted)">
+            <text data-min="2" x="4" y="146">SSD 1MB seq.</text><rect data-min="2" x="110" y="138" width="195" height="10" fill="var(--ink-soft)"/><text data-min="2" x="4" y="158" fill="var(--ink-soft)">1 ms</text>
+            <text data-min="2" x="4" y="178">disk seek</text><rect data-min="2" x="110" y="170" width="225" height="10" fill="var(--ink-soft)"/><text data-min="2" x="4" y="190" fill="var(--ink-soft)">10 ms</text>
+            <text data-min="2" x="4" y="210">disk 1MB seq.</text><rect data-min="2" x="110" y="202" width="234" height="10" fill="var(--ink-soft)"/><text data-min="2" x="4" y="222" fill="var(--ink-soft)">20 ms</text>
+            <text data-min="2" x="4" y="246">CA \u2194 Netherlands</text><rect data-min="2" x="110" y="238" width="260" height="12" fill="var(--accent)"/><text data-min="2" x="4" y="262" fill="var(--accent)">150 ms</text>
+          </g>
+          <line data-min="2" x1="110" y1="0" x2="110" y2="270" stroke="var(--line)" stroke-width="1"/>
+        </svg>
+        <figcaption id="stage-caption">stage 1 of 3 — power of two: the units everything else is built from.</figcaption>
+      </figure>
+      <div class="stage-nav" id="stage-nav"></div>
+    </div>
+
+    <div class="prose">
+
+      <section id="s1">
+        <h2 onclick="setStage(1)">01</h2>
+        <h3>Power of two: the units under everything</h3>
+        <p>Every capacity estimate reduces to bytes, and bytes reduce to powers of two. The book's chapter references this table without listing it — here's the version worth actually memorizing:</p>
+        <table class="ref">
+          <tr><th>power</th><th>value</th><th>name</th><th>short</th></tr>
+          <tr><td class="mono">2^10</td><td class="mono">1 thousand</td><td>kilobyte</td><td class="mono">KB</td></tr>
+          <tr><td class="mono">2^20</td><td class="mono">1 million</td><td>megabyte</td><td class="mono">MB</td></tr>
+          <tr><td class="mono">2^30</td><td class="mono">1 billion</td><td>gigabyte</td><td class="mono">GB</td></tr>
+          <tr><td class="mono">2^40</td><td class="mono">1 trillion</td><td>terabyte</td><td class="mono">TB</td></tr>
+          <tr><td class="mono">2^50</td><td class="mono">1 quadrillion</td><td>petabyte</td><td class="mono">PB</td></tr>
+        </table>
+      </section>
+
+      <section id="s2">
+        <h2 onclick="setStage(2)">02</h2>
+        <h3>Latency numbers every programmer should know</h3>
+        <p>Jeff Dean's numbers (the commonly cited 2020-updated set) — the chart on the left is drawn to a log scale, because the actual gaps are enormous: memory beats disk by roughly 1,000x, and a cross-datacenter round trip beats almost everything else on the list by three more orders of magnitude on top of that.</p>
+        <div class="term"><b>The takeaways that survive the exact numbers going stale:</b> memory is fast, disk is slow, avoid disk seeks where you can, cheap compression is worth doing before sending data over a network, and data centers are geographically separated — that trip costs real time no matter how fast your code is.</div>
+      </section>
+
+      <section id="s3">
+        <h2 onclick="setStage(3)">03</h2>
+        <h3>Availability, and running the actual estimate</h3>
+        <table class="ref">
+          <tr><th>availability</th><th>downtime / year</th></tr>
+          <tr><td class="mono">99%</td><td>~3.65 days</td></tr>
+          <tr><td class="mono">99.9%</td><td>~8.76 hours</td></tr>
+          <tr><td class="mono">99.99%</td><td>~52.6 minutes</td></tr>
+          <tr><td class="mono">99.999%</td><td>~5.26 minutes</td></tr>
+        </table>
+        <p>Now the exercise itself — pre-filled with the book's Twitter-style assumptions. Change any number and the estimate updates live:</p>
+        <div class="calc">
+          <div class="row"><label>Monthly active users (millions)</label><input id="mau" type="number" value="300"></div>
+          <div class="row"><label>% daily active</label><input id="dailyPct" type="number" value="50"></div>
+          <div class="row"><label>Posts per user per day</label><input id="postsDay" type="number" value="2"></div>
+          <div class="row"><label>% of posts with media</label><input id="mediaPct" type="number" value="10"></div>
+          <div class="row"><label>Avg media size (MB)</label><input id="mediaSize" type="number" value="1"></div>
+          <div class="row"><label>Retention (years)</label><input id="years" type="number" value="5"></div>
+          <div class="calc-out">
+            <div><div class="num" id="out-qps">\u2014</div><div class="lbl">avg qps</div></div>
+            <div><div class="num" id="out-peak">\u2014</div><div class="lbl">peak qps (2x)</div></div>
+            <div><div class="num" id="out-daily">\u2014</div><div class="lbl">media / day</div></div>
+            <div><div class="num" id="out-total">\u2014</div><div class="lbl">total storage</div></div>
+          </div>
+        </div>
+        <p style="font-size:15px; color:var(--ink-soft);">The formula is deliberately simple: DAU = MAU × daily%, average QPS = DAU × posts/day ÷ 86,400, peak QPS ≈ 2× average as a common (not universal) rule of thumb. Storage just multiplies DAU × posts × media% × size, then × 365 × retention years.</p>
+      </section>
+
+    </div>
+  </div>
+</main>
+
+<footer>
+  <p>Notes from System Design Interview by Alex Xu, ch. 2. Reference tables filled in beyond what the source text listed.</p>
+</footer>
+
+<script>
+const stages = [1,2,3];
+const captions = {
+  1:"stage 1 of 3 — power of two: the units everything else is built from.",
+  2:"stage 2 of 3 — latency numbers, drawn to a log scale.",
+  3:"stage 3 of 3 — availability and the worked estimate."
+};
+const nav = document.getElementById('stage-nav');
+stages.forEach(n => {
+  const b = document.createElement('button');
+  b.textContent = '0'+n+' — jump to stage';
+  b.dataset.n = n;
+  b.onclick = () => { setStage(n); document.getElementById('s'+n).scrollIntoView({behavior:'smooth', block:'start'}); };
+  nav.appendChild(b);
+});
+function setStage(n){
+  document.querySelectorAll('[data-min]').forEach(el=>{
+    const min = Number(el.dataset.min);
+    el.style.opacity = n >= min ? '1' : '0.15';
+  });
+  document.getElementById('stage-caption').textContent = captions[n];
+  document.querySelectorAll('.stage-nav button').forEach(b=>{
+    b.classList.toggle('active', Number(b.dataset.n)===n);
+  });
+}
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{ if(e.isIntersecting){ setStage(Number(e.target.id.replace('s',''))); } });
+}, {rootMargin:"-20% 0px -70% 0px"});
+stages.forEach(n=>io.observe(document.getElementById('s'+n)));
+setStage(1);
+
+function fmt(n){
+  if(n>=1e15) return (n/1e15).toFixed(1)+' PB';
+  if(n>=1e12) return (n/1e12).toFixed(1)+' TB';
+  if(n>=1e9) return (n/1e9).toFixed(1)+' GB';
+  if(n>=1e6) return (n/1e6).toFixed(1)+' MB';
+  if(n>=1e3) return (n/1e3).toFixed(1)+' KB';
+  return n.toFixed(0);
+}
+function calc(){
+  const mau = parseFloat(document.getElementById('mau').value)*1e6 || 0;
+  const dailyPct = parseFloat(document.getElementById('dailyPct').value)/100 || 0;
+  const postsDay = parseFloat(document.getElementById('postsDay').value) || 0;
+  const mediaPct = parseFloat(document.getElementById('mediaPct').value)/100 || 0;
+  const mediaSizeMB = parseFloat(document.getElementById('mediaSize').value) || 0;
+  const years = parseFloat(document.getElementById('years').value) || 0;
+
+  const dau = mau * dailyPct;
+  const qps = (dau * postsDay) / 86400;
+  const peak = qps * 2;
+  const dailyBytes = dau * postsDay * mediaPct * mediaSizeMB * 1e6;
+  const totalBytes = dailyBytes * 365 * years;
+
+  document.getElementById('out-qps').textContent = Math.round(qps).toLocaleString();
+  document.getElementById('out-peak').textContent = Math.round(peak).toLocaleString();
+  document.getElementById('out-daily').textContent = fmt(dailyBytes);
+  document.getElementById('out-total').textContent = fmt(totalBytes);
+}
+['mau','dailyPct','postsDay','mediaPct','mediaSize','years'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', calc);
+});
+calc();
+</script>
+</body>
+</html>
