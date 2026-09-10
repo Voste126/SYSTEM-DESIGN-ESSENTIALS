@@ -10,6 +10,7 @@
 | Chapter | Topic | Notes | Interactive Explainer |
 | :--- | :--- | :--- | :--- |
 | `01` | **Reliable, Scalable, Maintainable Applications** | [notes.md](01-reliable-scalable-maintainable/notes.md) | [article.html](01-reliable-scalable-maintainable/article.html) |
+| `02` | **Relational vs. document models** | [notes.md](02-data-models-relational-vs-document/notes.md) | [article.html](02-data-models-relational-vs-document/article.html) |
 
 ---
 

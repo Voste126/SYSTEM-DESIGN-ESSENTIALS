@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relational vs. document models</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EEEDE6; --paper-2:#E6E4D8; --ink:#1D2321; --ink-soft:#4B4A42;
+  --muted:#8A8776; --line:#CFCCBC; --accent:#B9762B; --accent-dim:#D8C39A;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0; background:var(--paper); color:var(--ink); font-family:'Source Serif 4', Georgia, serif; font-size:19px; line-height:1.65;}
+.mono{font-family:'IBM Plex Mono', monospace}
+.top-nav{max-width:640px; margin:0 auto; padding:1.5rem 24px 0; display:flex; gap:10px;}
+.nav-btn{font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--ink-soft); text-decoration:none; padding:6px 12px; border:1px solid var(--line); border-radius:4px; transition:border-color .15s, color .15s;}
+.nav-btn:hover{border-color:var(--accent); color:var(--accent);}
+.nav-btn.back{color:var(--accent); border-color:var(--accent-dim);}
+header{max-width:640px; margin:0 auto; padding:2.5rem 24px 3rem; border-bottom:1px solid var(--line);}
+header p.kicker{font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--accent); letter-spacing:0.02em; margin:0 0 1.25rem;}
+h1{font-size:38px; font-weight:600; line-height:1.15; margin:0 0 1rem; max-width:520px;}
+header p.dek{font-size:18px; color:var(--ink-soft); max-width:480px; margin:0;}
+main{max-width:940px; margin:0 auto; padding:3rem 24px 6rem;}
+.layout{display:grid; grid-template-columns:320px 1fr; gap:48px; align-items:start;}
+.diagram-col{position:sticky; top:24px;}
+.stage-nav{display:flex; flex-direction:column; gap:2px; margin-top:1.25rem; font-family:'IBM Plex Mono',monospace; font-size:13px;}
+.stage-nav button{all:unset; cursor:pointer; padding:7px 10px; border-radius:3px; color:var(--muted); border-left:2px solid transparent;}
+.stage-nav button.active{color:var(--ink); border-left:2px solid var(--accent); background:var(--paper-2);}
+.stage-nav button:hover{color:var(--ink);}
+figure{margin:0; padding:1.25rem; background:var(--paper-2); border:1px solid var(--line); border-radius:4px;}
+figcaption{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--muted); margin-top:0.75rem; line-height:1.5;}
+.toggle-row{display:flex; gap:8px; margin-bottom:12px;}
+.toggle-row button{font-family:'IBM Plex Mono', monospace; font-size:12px; padding:6px 12px; border:1px solid var(--line); border-radius:4px; background:none; cursor:pointer; color:var(--ink-soft);}
+.toggle-row button.on{border-color:var(--accent); color:var(--accent); background:var(--paper);}
+.prose section{padding:2.5rem 0; border-bottom:1px solid var(--line); scroll-margin-top:24px;}
+.prose section:last-child{border-bottom:none;}
+.prose h2{font-size:15px; font-family:'IBM Plex Mono',monospace; font-weight:500; color:var(--accent); margin:0 0 0.5rem; cursor:pointer;}
+.prose h3{font-size:26px; font-weight:600; margin:0 0 1rem; line-height:1.25;}
+.prose p{margin:0 0 1rem; max-width:62ch;}
+.term{display:inline-block; margin:0.75rem 0; padding:0.85rem 1rem; background:var(--paper-2); border-left:2px solid var(--accent-dim); font-size:16px; color:var(--ink-soft); max-width:60ch;}
+.term b{color:var(--ink); font-weight:600;}
+.code-toggle{margin:1rem 0;}
+.code-panel{display:none; background:var(--ink); color:var(--paper); border-radius:6px; padding:1rem; font-family:'IBM Plex Mono',monospace; font-size:13px; overflow-x:auto; white-space:pre;}
+.code-panel.show{display:block;}
+footer{max-width:640px; margin:0 auto; padding:3rem 24px 6rem; color:var(--muted); font-size:15px; border-top:1px solid var(--line);}
+@media (max-width:860px){ .layout{grid-template-columns:1fr;} .diagram-col{position:static;} h1{font-size:30px;} }
+svg text{font-family:'IBM Plex Mono', monospace;}
+</style>
+</head>
+<body>
+
+<nav class="top-nav">
+  <a href="../index.html" class="nav-btn back">&larr; what you don't know</a>
+  <a href="../../index.html" class="nav-btn">index</a>
+</nav>
+
+<header>
+  <p class="kicker">senior engineer track — chapter 02</p>
+  <h1>Relational vs. document models</h1>
+  <p class="dek">Same résumé, two shapes. Toggle below to see exactly why one-to-many loves documents and many-to-many hates them.</p>
+</header>
+
+<main>
+  <div class="layout">
+    <div class="diagram-col">
+      <figure>
+        <div class="toggle-row">
+          <button id="btn-rel" class="on" onclick="setMode('rel')">relational</button>
+          <button id="btn-doc" onclick="setMode('doc')">document</button>
+        </div>
+        <svg width="100%" viewBox="0 0 300 300" role="img">
+          <title>Relational vs document representation of the same resume</title>
+          <g id="mode-rel">
+            <rect x="90" y="10" width="120" height="40" rx="5" fill="none" stroke="var(--ink)" stroke-width="1"/>
+            <text x="150" y="28" text-anchor="middle" font-size="10" fill="var(--ink)" font-weight="600">users</text>
+            <text x="150" y="42" text-anchor="middle" font-size="8" fill="var(--muted)">user_id, name</text>
+
+            <line x1="50" y1="90" x2="120" y2="52" stroke="var(--ink)" stroke-width="1"/>
+            <line x1="150" y1="90" x2="150" y2="52" stroke="var(--ink)" stroke-width="1"/>
+            <line x1="250" y1="90" x2="180" y2="52" stroke="var(--ink)" stroke-width="1"/>
+
+            <rect x="5" y="92" width="90" height="42" rx="5" fill="none" stroke="var(--accent)" stroke-width="1"/>
+            <text x="50" y="110" text-anchor="middle" font-size="9.5" fill="var(--accent)">positions</text>
+            <text x="50" y="124" text-anchor="middle" font-size="8" fill="var(--muted)">user_id (FK)</text>
+
+            <rect x="105" y="92" width="90" height="42" rx="5" fill="none" stroke="var(--accent)" stroke-width="1"/>
+            <text x="150" y="110" text-anchor="middle" font-size="9.5" fill="var(--accent)">education</text>
+            <text x="150" y="124" text-anchor="middle" font-size="8" fill="var(--muted)">user_id (FK)</text>
+
+            <rect x="205" y="92" width="90" height="42" rx="5" fill="none" stroke="var(--accent)" stroke-width="1"/>
+            <text x="250" y="110" text-anchor="middle" font-size="9" fill="var(--accent)">contact_info</text>
+            <text x="250" y="124" text-anchor="middle" font-size="8" fill="var(--muted)">user_id (FK)</text>
+
+            <text x="150" y="170" text-anchor="middle" font-size="10" fill="var(--ink-soft)">4 tables</text>
+            <text x="150" y="186" text-anchor="middle" font-size="10" fill="var(--ink-soft)">1 profile = 1 join</text>
+            <text x="150" y="210" text-anchor="middle" font-size="10" fill="var(--accent)">many-to-many? easy —</text>
+            <text x="150" y="226" text-anchor="middle" font-size="10" fill="var(--accent)">just another FK</text>
+          </g>
+
+          <g id="mode-doc" style="display:none">
+            <rect x="15" y="10" width="270" height="270" rx="8" fill="none" stroke="var(--ink)" stroke-width="1"/>
+            <text x="150" y="32" text-anchor="middle" font-size="10" fill="var(--ink)" font-weight="600">user document</text>
+            <text x="150" y="46" text-anchor="middle" font-size="8" fill="var(--muted)">user_id: 251</text>
+
+            <line x1="150" y1="50" x2="70" y2="80" stroke="var(--accent)" stroke-width="1"/>
+            <line x1="150" y1="50" x2="150" y2="80" stroke="var(--accent)" stroke-width="1"/>
+            <line x1="150" y1="50" x2="230" y2="80" stroke="var(--accent)" stroke-width="1"/>
+
+            <rect x="25" y="82" width="90" height="60" rx="5" fill="none" stroke="var(--accent)" stroke-width="1" stroke-dasharray="2 2"/>
+            <text x="70" y="102" text-anchor="middle" font-size="9" fill="var(--accent)">positions[]</text>
+            <text x="70" y="116" text-anchor="middle" font-size="7.5" fill="var(--muted)">Microsoft</text>
+            <text x="70" y="128" text-anchor="middle" font-size="7.5" fill="var(--muted)">Gates Fdn</text>
+
+            <rect x="120" y="82" width="90" height="60" rx="5" fill="none" stroke="var(--accent)" stroke-width="1" stroke-dasharray="2 2"/>
+            <text x="165" y="102" text-anchor="middle" font-size="9" fill="var(--accent)">education[]</text>
+            <text x="165" y="116" text-anchor="middle" font-size="7.5" fill="var(--muted)">Harvard</text>
+            <text x="165" y="128" text-anchor="middle" font-size="7.5" fill="var(--muted)">Lakeside</text>
+
+            <rect x="215" y="82" width="65" height="60" rx="5" fill="none" stroke="var(--accent)" stroke-width="1" stroke-dasharray="2 2"/>
+            <text x="247" y="102" text-anchor="middle" font-size="8.5" fill="var(--accent)">contact</text>
+            <text x="247" y="116" text-anchor="middle" font-size="7.5" fill="var(--muted)">blog</text>
+            <text x="247" y="128" text-anchor="middle" font-size="7.5" fill="var(--muted)">twitter</text>
+
+            <text x="150" y="180" text-anchor="middle" font-size="10" fill="var(--ink-soft)">1 document</text>
+            <text x="150" y="196" text-anchor="middle" font-size="10" fill="var(--ink-soft)">1 profile = 1 read</text>
+            <text x="150" y="220" text-anchor="middle" font-size="10" fill="var(--accent)">many-to-many? awkward —</text>
+            <text x="150" y="236" text-anchor="middle" font-size="10" fill="var(--accent)">no native join</text>
+          </g>
+        </svg>
+        <figcaption id="mode-caption">The exact same résumé data — normalized across four linked tables, versus nested inside one tree.</figcaption>
+      </figure>
+      <div class="stage-nav" id="stage-nav"></div>
+    </div>
+
+    <div class="prose">
+
+      <section id="s1">
+        <h2 onclick="scrollTo(1)">01</h2>
+        <h3>Same data, two shapes</h3>
+        <p>Every layer of an application translates data into a simpler model for the layer below it. Real-world things become objects in your code; objects become a general-purpose model — tables, JSON, or graphs — before they ever touch a disk. This chapter is entirely about that one layer: which general-purpose shape should your data take?</p>
+        <p>Toggle the diagram on the left. Same résumé, same information — one version splits it into four linked tables, the other nests it as one tree. Neither is "correct"; they're optimized for different relationship shapes.</p>
+      </section>
+
+      <section id="s2">
+        <h2 onclick="scrollTo(2)">02</h2>
+        <h3>One-to-many loves trees. Many-to-many hates them.</h3>
+        <p>A résumé's jobs and education are a clean one-to-many relationship — one person, many positions — which is exactly what a nested document represents naturally. The moment you add a feature like "link each job to a company page" or "let one user recommend another," you've introduced a many-to-many relationship, and now the document model needs references resolved at read time — which is a join in every way except name.</p>
+        <div class="term"><b>The locality tradeoff.</b> A document is one continuous blob, so reading a whole profile is one query. But that only pays off if you actually need the whole document at once — the database still loads all of it even for a tiny read, and most writes rewrite the entire thing rather than just the changed field.</div>
+      </section>
+
+      <section id="s3">
+        <h2 onclick="scrollTo(3)">03</h2>
+        <h3>This exact fight happened in the 1970s</h3>
+        <p>IBM's hierarchical model (IMS, 1968) stored everything as nested trees — structurally the same shape as a document database today. It handled one-to-many beautifully and many-to-many terribly, same as now. The network model (CODASYL) fixed many-to-many by letting records have multiple parents, but the cost was brutal: finding data meant manually following a specific chain of pointers — an "access path" — that a programmer had to memorize and rewrite by hand every time the data's shape changed.</p>
+        <p>The relational model won by throwing access paths out entirely. You declare what you want; a query optimizer — built once, by the database vendor — figures out how to get it, and adapts automatically as your data and indexes change. That's the actual reason relational databases dominated for 30 years: not that tables beat trees, but that "ask a question, let the system route it" beats "memorize the route yourself" once a system gets complex.</p>
+        <div class="term">Document databases never inherited CODASYL's pointer-chasing fix for many-to-many. They resolve it exactly like relational databases do — an ID, followed up at read time — they just call it a "document reference" instead of a "foreign key."</div>
+      </section>
+
+      <section id="s4">
+        <h2 onclick="scrollTo(4)">04</h2>
+        <h3>Who enforces the shape, and when</h3>
+        <p>Relational databases are schema-on-write: the structure is explicit, and the database rejects anything that doesn't fit at write time. Document databases are typically schema-on-read: there's no enforced structure at all — the code that later reads the data just assumes some shape and handles it if that assumption breaks. It's the same philosophical split as static vs. dynamic typing, and neither is universally right.</p>
+        <p>Here's the same migration — splitting a full name into first/last — done both ways:</p>
+        <div class="toggle-row code-toggle">
+          <button id="btn-write" class="on" onclick="setCode('write')">schema-on-write</button>
+          <button id="btn-read" onclick="setCode('read')">schema-on-read</button>
+        </div>
+        <div id="code-write" class="code-panel show">ALTER TABLE users ADD COLUMN first_name text;
+UPDATE users SET first_name = split_part(name, ' ', 1);
+-- fast in Postgres (milliseconds)
+-- MySQL copies the whole table: can be minutes to hours</div>
+        <div id="code-read" class="code-panel">if (user &amp;&amp; user.name &amp;&amp; !user.first_name) {
+  // docs written before this change don't have first_name
+  user.first_name = user.name.split(" ")[0];
+}
+// no migration step — the fix lives in read-time code instead</div>
+        <p style="margin-top:1rem">Neither approach is free — schema-on-write pays the cost up front as a migration; schema-on-read defers it into scattered conditional checks that live in the codebase indefinitely.</p>
+      </section>
+
+    </div>
+  </div>
+</main>
+
+<footer>
+  <p>Notes from Designing Data-Intensive Applications, ch. 2 (part 1) — Martin Kleppmann.</p>
+</footer>
+
+<script>
+function setMode(mode){
+  document.getElementById('mode-rel').style.display = mode==='rel' ? 'block' : 'none';
+  document.getElementById('mode-doc').style.display = mode==='doc' ? 'block' : 'none';
+  document.getElementById('btn-rel').classList.toggle('on', mode==='rel');
+  document.getElementById('btn-doc').classList.toggle('on', mode==='doc');
+  document.getElementById('mode-caption').textContent = mode==='rel'
+    ? "Relational: four tables linked by foreign keys. Assembling one profile means a join."
+    : "Document: one nested tree. Assembling one profile means a single read — until you need many-to-many.";
+}
+function setCode(which){
+  document.getElementById('code-write').classList.toggle('show', which==='write');
+  document.getElementById('code-read').classList.toggle('show', which==='read');
+  document.getElementById('btn-write').classList.toggle('on', which==='write');
+  document.getElementById('btn-read').classList.toggle('on', which==='read');
+}
+const stages=[1,2,3,4];
+const nav = document.getElementById('stage-nav');
+const labels = {1:"the layering idea",2:"one-to-many vs many-to-many",3:"the 1970s replay",4:"schema-on-read vs write"};
+stages.forEach(n=>{
+  const b=document.createElement('button');
+  b.textContent = '0'+n+' — '+labels[n];
+  b.dataset.n=n;
+  b.onclick=()=>scrollTo(n);
+  nav.appendChild(b);
+});
+function scrollTo(n){
+  document.getElementById('s'+n).scrollIntoView({behavior:'smooth', block:'start'});
+}
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      const n = Number(e.target.id.replace('s',''));
+      document.querySelectorAll('.stage-nav button').forEach(b=>b.classList.toggle('active', Number(b.dataset.n)===n));
+    }
+  });
+}, {rootMargin:"-20% 0px -70% 0px"});
+stages.forEach(n=>io.observe(document.getElementById('s'+n)));
+</script>
+</body>
+</html>
