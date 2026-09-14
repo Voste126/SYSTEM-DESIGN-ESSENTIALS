@@ -1,10 +1,11 @@
 # Systems Knowledge & Architecture Essentials
 
-A personal engineering-knowledge repository maintaining structured notes and interactive visual explainers across three concurrent reading tracks:
+A personal engineering-knowledge repository maintaining structured notes and interactive visual explainers across concurrent learning and exploration tracks:
 
 - **[`interviews/`](interviews/README.md)** — *System Design Interview* by Alex Xu. Interview-prep framing: crisp, pattern-oriented, "here's the technique, the problem triggers, and when to reach for it."
 - **[`what-you-dont-know/`](what-you-dont-know/README.md)** — *Designing Data-Intensive Applications* by Martin Kleppmann. Senior-engineer depth: operational failure modes, distributed race conditions, and real-world production trade-offs.
 - **[`big-tech/`](big-tech/README.md)** — *Software Engineering at Google* by Titus Winters & Tom Manshreck. Big Tech track: process and organizational practice at scale, sustainability, time, and scaling policies.
+- **[`what-is-new-this-week/`](what-is-new-this-week/README.md)** — Weekly deep-dive architectural evaluations into emerging systems, open protocols (e.g. Model Context Protocol), and modern AI infrastructure.
 
 Every chapter across all tracks pairs markdown notes (`notes.md`) with a lightweight interactive visual explainer (`article.html`) and optional runnable code (`snippets/`).
 
@@ -39,9 +40,15 @@ systems-knowledge/
 │       ├── notes.md
 │       ├── article.html
 │       └── snippets/
-└── big-tech/                          # Track 3: Software Engineering at Google (Winters & Manshreck)
+├── big-tech/                          # Track 3: Software Engineering at Google (Winters & Manshreck)
+│   ├── README.md
+│   └── 01-what-is-software-engineering/
+│       ├── notes.md
+│       ├── article.html
+│       └── snippets/
+└── what-is-new-this-week/             # Track 4: Emerging Protocols & Systems (e.g. MCP)
     ├── README.md
-    └── 01-what-is-software-engineering/
+    └── 01-model-context-protocol/
         ├── notes.md
         ├── article.html
         └── snippets/

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Model Context Protocol (MCP) — The N × M Integration Bus</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EEEDE6; --paper-2:#E6E4D8; --ink:#1D2321; --ink-soft:#4B4A42;
+  --muted:#8A8776; --line:#CFCCBC; --accent:#B9762B; --accent-dim:#D8C39A;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0; background:var(--paper); color:var(--ink); font-family:'Source Serif 4', Georgia, serif; font-size:19px; line-height:1.65;}
+.mono{font-family:'IBM Plex Mono', monospace}
+.top-nav{max-width:640px; margin:0 auto; padding:1.5rem 24px 0; display:flex; gap:10px;}
+.nav-btn{font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--ink-soft); text-decoration:none; padding:6px 12px; border:1px solid var(--line); border-radius:4px; transition:border-color .15s, color .15s;}
+.nav-btn:hover{border-color:var(--accent); color:var(--accent);}
+.nav-btn.back{color:var(--accent); border-color:var(--accent-dim);}
+header{max-width:640px; margin:0 auto; padding:2.5rem 24px 3rem; border-bottom:1px solid var(--line);}
+header p.kicker{font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--accent); letter-spacing:0.02em; margin:0 0 1.25rem;}
+h1{font-size:38px; font-weight:600; line-height:1.15; margin:0 0 1rem; max-width:540px;}
+header p.dek{font-size:18px; color:var(--ink-soft); max-width:500px; margin:0;}
+main{max-width:960px; margin:0 auto; padding:3rem 24px 6rem;}
+.layout{display:grid; grid-template-columns:340px 1fr; gap:48px; align-items:start;}
+.diagram-col{position:sticky; top:24px;}
+.stage-nav{display:flex; flex-direction:column; gap:2px; margin-top:1.25rem; font-family:'IBM Plex Mono',monospace; font-size:13px;}
+.stage-nav button{all:unset; cursor:pointer; padding:7px 10px; border-radius:3px; color:var(--muted); border-left:2px solid transparent;}
+.stage-nav button.active{color:var(--ink); border-left:2px solid var(--accent); background:var(--paper-2);}
+.stage-nav button:hover{color:var(--ink);}
+figure{margin:0; padding:1.25rem; background:var(--paper-2); border:1px solid var(--line); border-radius:4px;}
+figcaption{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--muted); margin-top:0.75rem; line-height:1.5;}
+.prose section{padding:2.5rem 0; border-bottom:1px solid var(--line); scroll-margin-top:24px;}
+.prose section:last-child{border-bottom:none;}
+.prose h2{font-size:15px; font-family:'IBM Plex Mono',monospace; font-weight:500; color:var(--accent); margin:0 0 0.5rem; cursor:pointer;}
+.prose h3{font-size:26px; font-weight:600; margin:0 0 1rem; line-height:1.25;}
+.prose p{margin:0 0 1rem; max-width:62ch;}
+.prose ul{margin:0 0 1rem; padding-left:1.2rem; max-width:60ch;}
+.prose li{margin-bottom:0.4rem;}
+.term{display:inline-block; margin:0.75rem 0; padding:0.85rem 1rem; background:var(--paper-2); border-left:2px solid var(--accent-dim); font-size:16px; color:var(--ink-soft); max-width:60ch;}
+.term b{color:var(--ink); font-weight:600;}
+.code-panel{background:var(--ink); color:var(--paper); border-radius:6px; padding:1rem; font-family:'IBM Plex Mono',monospace; font-size:12.5px; overflow-x:auto; white-space:pre; margin:1rem 0; line-height:1.5;}
+footer{max-width:640px; margin:0 auto; padding:3rem 24px 6rem; color:var(--muted); font-size:15px; border-top:1px solid var(--line);}
+@media (max-width:860px){ .layout{grid-template-columns:1fr;} .diagram-col{position:static;} h1{font-size:30px;} }
+svg text{font-family:'IBM Plex Mono', monospace;}
+</style>
+</head>
+<body>
+
+<nav class="top-nav">
+  <a href="../index.html" class="nav-btn back">&larr; what is new this week</a>
+  <a href="../../index.html" class="nav-btn">index</a>
+</nav>
+
+<header>
+  <p class="kicker">emerging tech track — module 01</p>
+  <h1>Model Context Protocol (MCP)</h1>
+  <p class="dek">LSP for generative AI. How standardizing Tools, Resources, and Prompts over JSON-RPC 2.0 solves the N &times; M integration bottleneck.</p>
+</header>
+
+<main>
+  <div class="layout">
+    <div class="diagram-col">
+      <figure>
+        <svg width="100%" viewBox="0 0 320 280" role="img">
+          <title>Model Context Protocol Architecture</title>
+          <!-- Host Box -->
+          <rect id="box-host" x="10" y="10" width="300" height="75" rx="6" fill="none" stroke="var(--ink)" stroke-width="1.5"/>
+          <text x="25" y="32" font-size="11" font-weight="600" fill="var(--ink)">Host Application</text>
+          <text x="25" y="48" font-size="8.5" fill="var(--muted)">(Claude Desktop, Cursor, Agent Daemon)</text>
+          
+          <!-- Inner Client Box -->
+          <rect id="box-client" x="170" y="24" width="130" height="50" rx="4" fill="var(--paper)" stroke="var(--accent)" stroke-width="1"/>
+          <text x="235" y="44" font-size="9" text-anchor="middle" font-weight="600" fill="var(--accent)">MCP Client</text>
+          <text x="235" y="58" font-size="7.5" text-anchor="middle" fill="var(--muted)">1:1 Connection Proxy</text>
+
+          <!-- Wire Bus -->
+          <line id="wire-line" x1="235" y1="85" x2="235" y2="135" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="3 3"/>
+          <text id="wire-text" x="242" y="112" font-size="8" fill="var(--accent)">JSON-RPC 2.0 (stdio/SSE)</text>
+
+          <!-- Server Box -->
+          <rect id="box-server" x="10" y="135" width="300" height="135" rx="6" fill="none" stroke="var(--ink)" stroke-width="1.5"/>
+          <text x="25" y="156" font-size="11" font-weight="600" fill="var(--ink)">MCP Server Process</text>
+          <text x="25" y="170" font-size="8.5" fill="var(--muted)">(Domain isolation & credential boundary)</text>
+
+          <!-- Primitives -->
+          <g id="prim-tools">
+            <rect x="25" y="185" width="80" height="70" rx="4" fill="var(--paper)" stroke="var(--accent)" stroke-width="1"/>
+            <text x="65" y="205" font-size="9" text-anchor="middle" font-weight="600" fill="var(--accent)">Tools</text>
+            <text x="65" y="222" font-size="7.5" text-anchor="middle" fill="var(--ink-soft)">Active exec</text>
+            <text x="65" y="236" font-size="7.5" text-anchor="middle" fill="var(--muted)">JSON Schema</text>
+            <text x="65" y="248" font-size="7.5" text-anchor="middle" fill="var(--muted)">HITL Gate</text>
+          </g>
+
+          <g id="prim-resources">
+            <rect x="120" y="185" width="80" height="70" rx="4" fill="var(--paper)" stroke="var(--ink-soft)" stroke-width="1"/>
+            <text x="160" y="205" font-size="9" text-anchor="middle" font-weight="600" fill="var(--ink)">Resources</text>
+            <text x="160" y="222" font-size="7.5" text-anchor="middle" fill="var(--ink-soft)">Passive data</text>
+            <text x="160" y="236" font-size="7.5" text-anchor="middle" fill="var(--muted)">URI scheme</text>
+            <text x="160" y="248" font-size="7.5" text-anchor="middle" fill="var(--muted)">Read-only</text>
+          </g>
+
+          <g id="prim-prompts">
+            <rect x="215" y="185" width="80" height="70" rx="4" fill="var(--paper)" stroke="var(--ink-soft)" stroke-width="1"/>
+            <text x="255" y="205" font-size="9" text-anchor="middle" font-weight="600" fill="var(--ink)">Prompts</text>
+            <text x="255" y="222" font-size="7.5" text-anchor="middle" fill="var(--ink-soft)">Workflows</text>
+            <text x="255" y="236" font-size="7.5" text-anchor="middle" fill="var(--muted)">Templates</text>
+            <text x="255" y="248" font-size="7.5" text-anchor="middle" fill="var(--muted)">Parameterized</text>
+          </g>
+        </svg>
+        <figcaption id="stage-caption">Stage 01: The N &times; M integration problem and open protocol standardization.</figcaption>
+      </figure>
+      <div class="stage-nav" id="stage-nav"></div>
+    </div>
+
+    <div class="prose">
+
+      <section id="s1">
+        <h2 onclick="scrollToStage(1)">01</h2>
+        <h3>The N &times; M integration problem</h3>
+        <p>Before standard language protocols, supporting 20 languages across 20 code editors required writing 400 bespoke plugins. Microsoft solved this in 2016 with the Language Server Protocol (LSP). The Model Context Protocol (MCP) applies the exact same structural solution to generative AI agents.</p>
+        <p>Without an open standard, every agent runtime (Claude Desktop, Cursor, LangChain) must write custom connectors for every enterprise data source (Postgres, GitHub, Slack, Datadog). MCP standardizes the wire contract so an enterprise tool written once works across every agent host.</p>
+        <div class="term"><b>The core equation:</b> Instead of $N \text{ hosts} \times M \text{ integrations}$, MCP creates $N \text{ hosts} + M \text{ servers}$. An enterprise only writes the server once.</div>
+      </section>
+
+      <section id="s2">
+        <h2 onclick="scrollToStage(2)">02</h2>
+        <h3>Host-Client-Server Topology</h3>
+        <p>MCP strictly enforces three separate responsibility zones:</p>
+        <ul>
+          <li><b>Host</b>: The top-level orchestrator. Holds the foundational model API keys, manages the user interface, and enforces the security boundary. The host decides what enters the context window.</li>
+          <li><b>Client</b>: An in-process entity inside the host maintaining a strict 1:1 transport connection to a single server.</li>
+          <li><b>Server</b>: An isolated process (either local subprocess or remote service) exposing enterprise context and capabilities. The server has zero direct connection to the LLM and never touches the host's model tokens.</li>
+        </ul>
+      </section>
+
+      <section id="s3">
+        <h2 onclick="scrollToStage(3)">03</h2>
+        <h3>JSON-RPC 2.0 &amp; Handshake Lifecycle</h3>
+        <p>Communication is strictly bi-directional JSON-RPC 2.0 over standard I/O (local <span class="mono">stdio</span>) or HTTP Server-Sent Events (<span class="mono">SSE</span>). Before any business requests can execute, both sides negotiate capabilities:</p>
+        <div class="code-panel">// 1. Client -> Server: initialize
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "initialize",
+  "params": {
+    "protocolVersion": "2024-11-05",
+    "capabilities": { "roots": { "listChanged": true } },
+    "clientInfo": { "name": "AgentRunner", "version": "1.0.0" }
+  }
+}
+
+// 2. Server -> Client: capabilities result
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "capabilities": {
+      "tools": { "listChanged": true },
+      "resources": { "subscribe": true }
+    },
+    "serverInfo": { "name": "pg-mcp", "version": "0.1.0" }
+  }
+}
+
+// 3. Client -> Server: notifications/initialized
+{ "jsonrpc": "2.0", "method": "notifications/initialized" }</div>
+      </section>
+
+      <section id="s4">
+        <h2 onclick="scrollToStage(4)">04</h2>
+        <h3>The Three Primitives: Tools, Resources, Prompts</h3>
+        <p>All server capabilities map directly into three distinct primitives:</p>
+        <ul>
+          <li><b>Tools</b> (Active): Callable functions with strict JSON Schemas. When an LLM triggers a tool, the client sends <span class="mono">tools/call</span> and receives formatted results.</li>
+          <li><b>Resources</b> (Passive): Read-only documents and data identified by standardized URIs (<span class="mono">postgres://customers/schema</span>). Safe for context hydration without side-effects.</li>
+          <li><b>Prompts</b> (Workflows): Server-managed prompt templates with argument validation to standardize enterprise tasks.</li>
+        </ul>
+        <div class="term"><b>Strict JSON Schemas matter:</b> If tool arguments are loosely typed, the LLM will hallucinate parameters and trigger cascade failure loops. Strict schema definition is a production requirement.</div>
+      </section>
+
+      <section id="s5">
+        <h2 onclick="scrollToStage(5)">05</h2>
+        <h3>Security, HITL Gates &amp; Credential Isolation</h3>
+        <p>Connecting LLMs to live databases creates severe operational risk. MCP's architecture enforces three crucial defenses:</p>
+        <ul>
+          <li><b>Credential Isolation</b>: Enterprise database passwords remain isolated inside the server process. The LLM host never inspects the raw credentials.</li>
+          <li><b>Human-In-The-Loop (HITL)</b>: A tool request generated by an LLM is an <i>untrusted intent</i>. The host must gate destructive calls behind explicit user approvals or policy engines.</li>
+          <li><b>Indirect Prompt Injection Defense</b>: Data read via <span class="mono">Resources</span> is strictly passive context. Malicious commands embedded in documents cannot directly execute tools without passing through the host's policy filters.</li>
+        </ul>
+      </section>
+
+    </div>
+  </div>
+</main>
+
+<footer>
+  <p>Notes on the Model Context Protocol (Anthropic Open Specification). Part of the Emerging Tech weekly architecture series.</p>
+</footer>
+
+<script>
+const captions = {
+  1: "Stage 01: The N × M integration problem and open protocol standardization.",
+  2: "Stage 02: Host-Client-Server decoupled topology and security boundaries.",
+  3: "Stage 03: JSON-RPC 2.0 handshake and capability negotiation.",
+  4: "Stage 04: Primitives — active Tools, passive Resources, and templated Prompts.",
+  5: "Stage 05: Enterprise security — Human-in-the-loop gates and credential isolation."
+};
+
+const stages = [1, 2, 3, 4, 5];
+const nav = document.getElementById('stage-nav');
+const labels = {
+  1: "the N × M problem",
+  2: "host-client-server",
+  3: "JSON-RPC & handshake",
+  4: "the three primitives",
+  5: "security & HITL gates"
+};
+
+stages.forEach(n => {
+  const b = document.createElement('button');
+  b.textContent = '0' + n + ' — ' + labels[n];
+  b.dataset.n = n;
+  b.onclick = () => scrollToStage(n);
+  nav.appendChild(b);
+});
+
+function setStage(n) {
+  document.getElementById('stage-caption').textContent = captions[n];
+  document.querySelectorAll('.stage-nav button').forEach(b => {
+    b.classList.toggle('active', Number(b.dataset.n) === n);
+  });
+
+  // Visual highlights on the diagram
+  const hostBox = document.getElementById('box-host');
+  const wireLine = document.getElementById('wire-line');
+  const serverBox = document.getElementById('box-server');
+  const primTools = document.getElementById('prim-tools');
+  const primRes = document.getElementById('prim-resources');
+  const primPrompts = document.getElementById('prim-prompts');
+
+  hostBox.setAttribute('stroke', (n === 2 || n === 5) ? 'var(--accent)' : 'var(--ink)');
+  serverBox.setAttribute('stroke', (n === 2 || n === 5) ? 'var(--accent)' : 'var(--ink)');
+  wireLine.setAttribute('stroke', n === 3 ? 'var(--accent)' : 'var(--ink)');
+  wireLine.setAttribute('stroke-width', n === 3 ? '2.5' : '1.5');
+
+  primTools.style.opacity = (n === 4 || n === 5) ? '1' : '0.4';
+  primRes.style.opacity = (n === 4) ? '1' : '0.4';
+  primPrompts.style.opacity = (n === 4) ? '1' : '0.4';
+}
+
+function scrollToStage(n) {
+  setStage(n);
+  document.getElementById('s' + n).scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const n = Number(e.target.id.replace('s', ''));
+      setStage(n);
+    }
+  });
+}, { rootMargin: "-20% 0px -70% 0px" });
+
+stages.forEach(n => io.observe(document.getElementById('s' + n)));
+setStage(1);
+</script>
+</body>
+</html>

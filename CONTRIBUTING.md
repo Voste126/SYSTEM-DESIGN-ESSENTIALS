@@ -9,6 +9,7 @@ Determine the correct track and create a zero-padded folder:
 - **Alex Xu**: `interviews/NN-kebab-case-topic-name/`
 - **DDIA**: `what-you-dont-know/NN-kebab-case-topic-name/`
 - **Software Engineering at Google**: `big-tech/NN-kebab-case-topic-name/`
+- **Emerging Systems / Protocols**: `what-is-new-this-week/NN-kebab-case-topic-name/`
 
 ```bash
 # Example for interviews Chapter 02:
@@ -159,7 +160,7 @@ Source: Designing Data-Intensive Applications, Kleppmann, ch. NN
 ---
 
 ## 4. Add Row to Track `README.md`
-Open the corresponding track's `README.md` (`interviews/README.md`, `what-you-dont-know/README.md`, or `big-tech/README.md`) and append a row to the table:
+Open the corresponding track's `README.md` (`interviews/README.md`, `what-you-dont-know/README.md`, `big-tech/README.md`, or `what-is-new-this-week/README.md`) and append a row to the table:
 
 ```markdown
 | `NN` | **[Topic Name]** | [notes.md](NN-kebab-case/notes.md) | [article.html](NN-kebab-case/article.html) |
