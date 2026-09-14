@@ -53,3 +53,68 @@ Alex Xu's book treats "SQL vs. NoSQL" as a scale/latency decision — pick NoSQL
 
 - At what point does a "mostly one-to-many, occasionally many-to-many" data shape tip from "fine in documents, denormalize the rare case" to "should have been relational from day one"?
 - Is schema-on-read actually cheaper long-term, or does it just move the cost from a visible migration to invisible scattered `if (!user.first_name)` checks throughout the codebase?
+
+---
+
+# Part 2 — Query languages and graph-like data models
+(Continuing the same DDIA ch. 2 notes — this is the second half of the chapter: declarative vs. imperative querying, MapReduce, and graph data models.)
+
+## Read this version first (the simple one)
+
+**Declarative vs. imperative, in one metaphor.** Imperative code is a recipe: do this, then this, then this, in this exact order. Declarative code is an order at a restaurant: "bring me all the sharks" — you don't care how the kitchen finds them, you just want the result. SQL, CSS, and graph query languages like Cypher are all declarative for the same reason: because you never said *how*, the system is free to change *how* behind the scenes (reorder data on disk, use a different index, run parts in parallel) without ever breaking your code. If you'd written the "how" yourself, any of those internal changes could silently break you.
+
+**Graphs, in one sentence.** Documents are good when data is a tree (one thing has many of a single kind of thing). Relational tables are good when data has some many-to-many relationships, but a bounded, foreseeable number of them. Graphs are for when *anything might relate to anything* — social networks, road maps, or Facebook's single graph containing people, places, events, and comments all at once, connected in ways you can't fully predict in advance.
+
+## The deeper version
+
+### Declarative querying — why it matters beyond "it's shorter"
+
+The imperative version of "find all sharks" is a loop with an `if` check inside it. The declarative version, `SELECT * FROM animals WHERE family = 'Sharks'`, says only *what* you want, not *how* to get it — that's the entire distinction. Two real consequences follow from that:
+
+1. **The database can optimize freely.** If your imperative code assumes the animals appear in a particular order, the database can never safely reorganize storage behind your back — it might break you. SQL never promised an order, so the database is free to shuffle data around for its own efficiency reasons.
+2. **Declarative code parallelizes better.** Imperative code specifies a sequence of steps that must happen in order — hard to split across multiple CPU cores or machines. Declarative code only specifies the *shape* of the result, so the database is free to compute it however it wants, including in parallel, without your query needing to change at all.
+
+The CSS example makes this concrete outside of databases entirely: `li.selected > p { background-color: blue; }` keeps working automatically as the page changes — remove the `selected` class, and the blue disappears with no extra code. The equivalent hand-written JavaScript DOM manipulation has to be manually rerun every time state changes, and if you forget, the stale style just... stays wrong. That's the general cost of imperative code: it captures what should happen *once*, right now, rather than a rule that continues to hold.
+
+### MapReduce — a bridge, not a full solution
+
+MapReduce sits *between* declarative and imperative: you write two small functions — `map` (called once per record, "emits" a key/value pair) and `reduce` (called once per unique key, combining all the values that were emitted under it) — and the database framework calls them repeatedly for you. Counting shark sightings per month: `map` looks at one observation and emits `("2013-12", numAnimals)`; `reduce` sums up all the values that arrived under the same month-key.
+
+It's powerful, but it's also why MongoDB eventually added a fully declarative "aggregation pipeline" on top — writing two carefully coordinated JavaScript functions is usually more work than one SQL-shaped query, and a declarative form gives the query optimizer far more room to improve performance automatically. Worth remembering: **a NoSQL system reinventing a JSON-flavored subset of SQL is a pattern, not a coincidence** — declarative querying keeps winning for the same optimizer-freedom reason every time.
+
+### Graph data models — property graphs and triple-stores
+
+A **property graph** is: vertices (each with an ID + a bag of key/value properties) and edges (each with an ID, a start vertex, an end vertex, a label, and its own properties). Nothing restricts which vertex can connect to which — that flexibility is the entire point. You can even represent a property graph *inside* two ordinary relational tables (one for vertices, one for edges) — the graph-ness is about the query patterns you want to run, not some exotic physical storage requirement.
+
+A **triple-store** takes the same idea to its smallest possible unit: every fact is a `(subject, predicate, object)` triple, like `(lucy, age, 33)` or `(lucy, marriedTo, alain)`. A plain property and a graph edge use the exact same syntax — the object is either a primitive value (property) or another vertex (edge). This is the data model behind RDF and the (mostly unrealized) "semantic web" vision — machine-readable triples published like web pages, so data from different sites could combine automatically. It never took off the way it was hyped to, but the triple model itself is still genuinely useful as an internal application data model, independent of that history.
+
+### Why graph query languages exist — the variable-length path problem
+
+The concrete example worth internalizing: "find people born in the US who now live in Europe." A person's `LIVES_IN` edge might point directly at a country, or several hops away at a city inside a region inside a state inside a country — you don't know in advance how many `WITHIN` hops you'll need to follow. SQL wasn't built for a *variable* number of joins; expressing "follow this edge zero or more times" (`:WITHIN*0..` in Cypher) takes a `WITH RECURSIVE` common table expression in SQL that runs to roughly 29 lines, versus about 4 lines in Cypher for the same result. That's not "SQL is bad" — it's a demonstration that a query language's shape follows from the shape of the data model it was designed around. SPARQL (for RDF triple-stores) and Datalog (older, rule-based, the shared academic ancestor of the pattern-matching approach) solve the same variable-length-path problem, each with a different syntax but the same underlying declarative philosophy.
+
+### Is a graph database just CODASYL again?
+
+No — and the difference is worth being precise about, since it directly answers the "haven't we already tried this" question. CODASYL forced a rigid schema (which record type could nest in which), only let you reach a record by physically walking a predefined access path, and made every query imperative and brittle to schema changes. Graph databases keep the "anything can link to anything" flexibility CODASYL was reaching for, but drop everything that made it painful: any vertex can connect to any other with no schema restriction, you can jump straight to any vertex by ID or index instead of walking a fixed path, and most graph databases support genuinely declarative query languages (Cypher, SPARQL) the same way SQL is declarative for tables.
+
+## The one metaphor that ties the whole chapter together
+
+Three data models, three answers to "how connected is your data, really?":
+- **Document**: data is mostly a tree — one thing has many of one other kind of thing, and that's the whole relationship. (A résumé has many jobs.)
+- **Relational**: data has real many-to-many relationships, but a bounded, plannable set of them — you know your join patterns mostly in advance. (Users, orders, products.)
+- **Graph**: relationships are the point, not a side effect, and you genuinely can't predict in advance how many hops apart two things might be. (Social networks, "who's connected to whom," road networks.)
+
+None of these is more "advanced" than the others — picking wrong just means fighting your data model instead of using it.
+
+## Terms worth being able to define cold
+
+- **Declarative vs. imperative** — specifying *what* you want vs. specifying the exact steps to get it.
+- **MapReduce** — a halfway point between the two: small pure functions (map, reduce) called repeatedly by a framework.
+- **Property graph** — vertices + edges, each carrying arbitrary key/value properties.
+- **Triple-store** — the same idea reduced to `(subject, predicate, object)` statements.
+- **Variable-length path query** — "follow this kind of edge zero or more times" — the reason graph query languages exist as their own category rather than being absorbed into SQL.
+
+## Questions I still don't have a crisp answer to
+
+- At what point does "some many-to-many relationships" in a relational schema actually cross the line into "this should have been a graph database"?
+- Datalog is described as the foundation the others build on, but it's also the least used in practice — is that just historical accident, or is there something about its rule-based style that's genuinely harder to adopt day to day?
+

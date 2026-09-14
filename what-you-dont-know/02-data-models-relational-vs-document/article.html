@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="color-scheme" content="light">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Relational vs. document models</title>
+<title>Data models and query languages</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -61,7 +61,7 @@ svg text{font-family:'IBM Plex Mono', monospace;}
 
 <header>
   <p class="kicker">senior engineer track — chapter 02</p>
-  <h1>Relational vs. document models</h1>
+  <h1>Data models and query languages</h1>
   <p class="dek">Same résumé, two shapes. Toggle below to see exactly why one-to-many loves documents and many-to-many hates them.</p>
 </header>
 
@@ -182,12 +182,125 @@ UPDATE users SET first_name = split_part(name, ' ', 1);
         <p style="margin-top:1rem">Neither approach is free — schema-on-write pays the cost up front as a migration; schema-on-read defers it into scattered conditional checks that live in the codebase indefinitely.</p>
       </section>
 
+<section id="s5">
+  <h2 onclick="scrollTo(5)">05</h2>
+  <h3>Declarative vs. imperative, in code</h3>
+  <p>Imperative code is a recipe — do this, then this, in order. Declarative code is an order form: "bring me all the sharks," with no opinion on how the kitchen finds them. That's the entire distinction, and it's why the database is free to reorganize storage or run parts of your query in parallel without ever breaking your code — you never told it how, so it's free to change how.</p>
+  <div class="toggle-row code-toggle">
+    <button id="btn-decl" class="on" onclick="setCode2('decl')">declarative (SQL)</button>
+    <button id="btn-imp" onclick="setCode2('imp')">imperative (JS)</button>
+  </div>
+  <div id="code-decl" class="code-panel show">SELECT * FROM animals
+WHERE family = 'Sharks';
+
+-- says WHAT you want.
+-- doesn't care about row order,
+-- so the database is free to
+-- reorganize storage, use any
+-- index, or run this in parallel.</div>
+  <div id="code-imp" class="code-panel">function getSharks() {
+  var sharks = [];
+  for (var i = 0; i < animals.length; i++) {
+    if (animals[i].family === "Sharks") {
+      sharks.push(animals[i]);
+    }
+  }
+  return sharks;
+}
+// says exactly HOW to get it.
+// assumes a specific array order —
+// the database can never safely
+// change storage layout underneath
+// code shaped like this.</div>
+  <div class="term"><b>Same idea in a browser.</b> CSS (<span class="mono">li.selected &gt; p { background: blue; }</span>) keeps holding true automatically as the page changes — remove the class, the blue disappears, no extra code. The equivalent hand-written DOM-manipulation JavaScript has to be manually rerun on every state change, and if you forget, it silently goes stale.</div>
+</section>
+
+<section id="s6">
+  <h2 onclick="scrollTo(6)">06</h2>
+  <h3>MapReduce: declarative's imperative cousin</h3>
+  <p>MapReduce sits between the two. You write a <span class="mono">map</span> function (called once per record, emits a key/value pair) and a <span class="mono">reduce</span> function (called once per unique key, combining everything emitted under it) — the framework calls both repeatedly for you. Counting shark sightings per month: map looks at one observation and emits <span class="mono">("2013-12", numAnimals)</span>; reduce sums every value that arrived under that same month key.</p>
+  <div class="term">Writing two coordinated JavaScript functions is usually more work than one SQL-shaped query — which is exactly why MongoDB later added a fully declarative aggregation pipeline on top. A NoSQL system reinventing a JSON-flavored subset of SQL isn't a coincidence; declarative querying keeps winning for the same optimizer-freedom reason, every time.</div>
+</section>
+
+<section id="s7">
+  <h2 onclick="scrollTo(7)">07</h2>
+  <h3>When relationships stop being predictable: graphs</h3>
+  <p>Lucy was born in Idaho, which is within the USA, which is within North America. She lives in London, within the UK, within Europe. Nothing here is deeply nested (document model) or a fixed number of joins (relational) — it's a chain of "within" relationships of unknown length, and that's exactly the shape graphs are built for.</p>
+  <svg width="100%" viewBox="0 0 400 160" style="max-width:500px">
+    <title>Lucy's graph: born in Idaho, within USA, within North America</title>
+    <rect x="10" y="60" width="70" height="34" rx="5" fill="none" stroke="var(--ink)"/>
+    <text x="45" y="81" text-anchor="middle" font-size="11" fill="var(--ink)">Lucy</text>
+    <rect x="120" y="60" width="70" height="34" rx="5" fill="none" stroke="var(--accent)"/>
+    <text x="155" y="81" text-anchor="middle" font-size="11" fill="var(--accent)">Idaho</text>
+    <rect x="230" y="60" width="70" height="34" rx="5" fill="none" stroke="var(--accent)"/>
+    <text x="265" y="81" text-anchor="middle" font-size="10" fill="var(--accent)">USA</text>
+    <rect x="330" y="60" width="65" height="34" rx="5" fill="none" stroke="var(--accent)"/>
+    <text x="362" y="76" text-anchor="middle" font-size="9" fill="var(--accent)">North</text>
+    <text x="362" y="88" text-anchor="middle" font-size="9" fill="var(--accent)">America</text>
+    <line x1="80" y1="77" x2="118" y2="77" stroke="var(--ink)" stroke-width="1" marker-end="url(#ah2)"/>
+    <text x="99" y="70" text-anchor="middle" font-size="8" fill="var(--muted)">BORN_IN</text>
+    <line x1="190" y1="77" x2="228" y2="77" stroke="var(--accent)" stroke-width="1" marker-end="url(#ah2)"/>
+    <text x="209" y="70" text-anchor="middle" font-size="8" fill="var(--muted)">WITHIN</text>
+    <line x1="300" y1="77" x2="328" y2="77" stroke="var(--accent)" stroke-width="1" marker-end="url(#ah2)"/>
+    <text x="314" y="70" text-anchor="middle" font-size="7.5" fill="var(--muted)">WITHIN</text>
+    <defs><marker id="ah2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="var(--ink)" stroke-width="1.2"/></marker></defs>
+    <text x="200" y="130" text-anchor="middle" font-size="10" fill="var(--ink-soft)">"find everyone born in the US now living in Europe"</text>
+    <text x="200" y="146" text-anchor="middle" font-size="10" fill="var(--ink-soft)">means following WITHIN edges an unknown number of hops</text>
+  </svg>
+</section>
+
+<section id="s8">
+  <h2 onclick="scrollTo(8)">08</h2>
+  <h3>The same query, four languages</h3>
+  <p>"Find people born in the US who now live in Europe" — the exact same question, expressed in four different query languages. Watch what happens to the line count once the underlying model stops matching the question naturally.</p>
+  <div class="toggle-row code-toggle" style="flex-wrap:wrap">
+    <button id="btn-cypher" class="on" onclick="setLang('cypher')">Cypher (4 lines)</button>
+    <button id="btn-sparql" onclick="setLang('sparql')">SPARQL (4 lines)</button>
+    <button id="btn-datalog" onclick="setLang('datalog')">Datalog (rules)</button>
+    <button id="btn-sql" onclick="setLang('sql')">SQL (~29 lines)</button>
+  </div>
+  <div id="lang-cypher" class="code-panel show">MATCH
+  (person) -[:BORN_IN]-> () -[:WITHIN*0..]-> (us:Location {name:'United States'}),
+  (person) -[:LIVES_IN]-> () -[:WITHIN*0..]-> (eu:Location {name:'Europe'})
+RETURN person.name</div>
+  <div id="lang-sparql" class="code-panel">SELECT ?personName WHERE {
+  ?person :name ?personName.
+  ?person :bornIn / :within* / :name "United States".
+  ?person :livesIn / :within* / :name "Europe".
+}</div>
+  <div id="lang-datalog" class="code-panel">within_recursive(Loc, Name) :- name(Loc, Name).
+within_recursive(Loc, Name) :- within(Loc, Via), within_recursive(Via, Name).
+
+migrated(Name, Born, Living) :-
+  name(P, Name), born_in(P, B), within_recursive(B, Born),
+  lives_in(P, L), within_recursive(L, Living).
+
+?- migrated(Who, 'United States', 'Europe').</div>
+  <div id="lang-sql" class="code-panel">WITH RECURSIVE
+  in_usa(vertex_id) AS (
+    SELECT vertex_id FROM vertices WHERE properties->>'name' = 'United States'
+    UNION
+    SELECT edges.tail_vertex FROM edges
+    JOIN in_usa ON edges.head_vertex = in_usa.vertex_id
+    WHERE edges.label = 'within'
+  ),
+  in_europe(vertex_id) AS ( /* ...same pattern, ~6 more lines... */ ),
+  born_in_usa(vertex_id) AS ( /* ...join through in_usa... */ ),
+  lives_in_europe(vertex_id) AS ( /* ...join through in_europe... */ )
+SELECT vertices.properties->>'name'
+FROM vertices
+JOIN born_in_usa ON vertices.vertex_id = born_in_usa.vertex_id
+JOIN lives_in_europe ON vertices.vertex_id = lives_in_europe.vertex_id;
+-- full version runs ~29 lines</div>
+  <p style="margin-top:1rem; font-size:15px; color:var(--ink-soft)">This isn't "SQL is worse" — it's proof that a query language's shape follows from the data model it was built around. SQL wasn't designed to express "follow this edge zero or more times"; graph languages were.</p>
+</section>
+
     </div>
   </div>
 </main>
 
 <footer>
-  <p>Notes from Designing Data-Intensive Applications, ch. 2 (part 1) — Martin Kleppmann.</p>
+  <p>Notes from Designing Data-Intensive Applications, ch. 2 — Martin Kleppmann.</p>
 </footer>
 
 <script>
@@ -206,9 +319,30 @@ function setCode(which){
   document.getElementById('btn-write').classList.toggle('on', which==='write');
   document.getElementById('btn-read').classList.toggle('on', which==='read');
 }
-const stages=[1,2,3,4];
+function setCode2(which){
+  document.getElementById('code-decl').classList.toggle('show', which==='decl');
+  document.getElementById('code-imp').classList.toggle('show', which==='imp');
+  document.getElementById('btn-decl').classList.toggle('on', which==='decl');
+  document.getElementById('btn-imp').classList.toggle('on', which==='imp');
+}
+function setLang(which){
+  ['cypher','sparql','datalog','sql'].forEach(l=>{
+    document.getElementById('lang-'+l).classList.toggle('show', l===which);
+    document.getElementById('btn-'+l).classList.toggle('on', l===which);
+  });
+}
+const stages=[1,2,3,4,5,6,7,8];
 const nav = document.getElementById('stage-nav');
-const labels = {1:"the layering idea",2:"one-to-many vs many-to-many",3:"the 1970s replay",4:"schema-on-read vs write"};
+const labels = {
+  1:"the layering idea",
+  2:"one-to-many vs many-to-many",
+  3:"the 1970s replay",
+  4:"schema-on-read vs write",
+  5:"declarative vs imperative",
+  6:"MapReduce",
+  7:"graph data models",
+  8:"four query languages"
+};
 stages.forEach(n=>{
   const b=document.createElement('button');
   b.textContent = '0'+n+' — '+labels[n];
