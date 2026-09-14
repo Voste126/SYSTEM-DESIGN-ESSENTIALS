@@ -1,11 +1,12 @@
 # Systems Knowledge & Architecture Essentials
 
-A personal engineering-knowledge repository maintaining structured notes and interactive visual explainers across two concurrent reading tracks. The repository separates interview-oriented patterns from production-grade distributed systems trade-offs:
+A personal engineering-knowledge repository maintaining structured notes and interactive visual explainers across three concurrent reading tracks:
 
 - **[`interviews/`](interviews/README.md)** — *System Design Interview* by Alex Xu. Interview-prep framing: crisp, pattern-oriented, "here's the technique, the problem triggers, and when to reach for it."
 - **[`what-you-dont-know/`](what-you-dont-know/README.md)** — *Designing Data-Intensive Applications* by Martin Kleppmann. Senior-engineer depth: operational failure modes, distributed race conditions, and real-world production trade-offs.
+- **[`big-tech/`](big-tech/README.md)** — *Software Engineering at Google* by Titus Winters & Tom Manshreck. Big Tech track: process and organizational practice at scale, sustainability, time, and scaling policies.
 
-Every chapter across both tracks pairs markdown notes (`notes.md`) with a lightweight interactive visual explainer (`article.html`) and optional runnable code (`snippets/`).
+Every chapter across all tracks pairs markdown notes (`notes.md`) with a lightweight interactive visual explainer (`article.html`) and optional runnable code (`snippets/`).
 
 ---
 
@@ -32,9 +33,15 @@ systems-knowledge/
 │       ├── notes.md
 │       ├── article.html
 │       └── snippets/
-└── what-you-dont-know/                # Track 2: Designing Data-Intensive Applications (DDIA)
+├── what-you-dont-know/                # Track 2: Designing Data-Intensive Applications (DDIA)
+│   ├── README.md
+│   └── 01-reliable-scalable-maintainable/
+│       ├── notes.md
+│       ├── article.html
+│       └── snippets/
+└── big-tech/                          # Track 3: Software Engineering at Google (Winters & Manshreck)
     ├── README.md
-    └── 01-reliable-scalable-maintainable/
+    └── 01-what-is-software-engineering/
         ├── notes.md
         ├── article.html
         └── snippets/

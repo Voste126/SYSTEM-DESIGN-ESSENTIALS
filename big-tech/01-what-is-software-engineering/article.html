@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>What is software engineering?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EEEDE6; --paper-2:#E6E4D8; --ink:#1D2321; --ink-soft:#4B4A42;
+  --muted:#8A8776; --line:#CFCCBC; --accent:#B9762B; --accent-dim:#D8C39A;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0; background:var(--paper); color:var(--ink); font-family:'Source Serif 4', Georgia, serif; font-size:19px; line-height:1.65;}
+.mono{font-family:'IBM Plex Mono', monospace}
+.top-nav{max-width:640px; margin:0 auto; padding:1.5rem 24px 0; display:flex; gap:10px;}
+.nav-btn{font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--ink-soft); text-decoration:none; padding:6px 12px; border:1px solid var(--line); border-radius:4px; transition:border-color .15s, color .15s;}
+.nav-btn:hover{border-color:var(--accent); color:var(--accent);}
+.nav-btn.back{color:var(--accent); border-color:var(--accent-dim);}
+header{max-width:640px; margin:0 auto; padding:2.5rem 24px 3rem; border-bottom:1px solid var(--line);}
+header p.kicker{font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--accent); letter-spacing:0.02em; margin:0 0 1.25rem;}
+h1{font-size:38px; font-weight:600; line-height:1.15; margin:0 0 1rem; max-width:520px;}
+header p.dek{font-size:18px; color:var(--ink-soft); max-width:480px; margin:0;}
+main{max-width:940px; margin:0 auto; padding:3rem 24px 6rem;}
+.layout{display:grid; grid-template-columns:320px 1fr; gap:48px; align-items:start;}
+.diagram-col{position:sticky; top:24px;}
+.stage-nav{display:flex; flex-direction:column; gap:2px; margin-top:1.25rem; font-family:'IBM Plex Mono',monospace; font-size:13px;}
+.stage-nav button{all:unset; cursor:pointer; padding:7px 10px; border-radius:3px; color:var(--muted); border-left:2px solid transparent;}
+.stage-nav button.active{color:var(--ink); border-left:2px solid var(--accent); background:var(--paper-2);}
+.stage-nav button:hover{color:var(--ink);}
+figure{margin:0; padding:1.25rem; background:var(--paper-2); border:1px solid var(--line); border-radius:4px;}
+figcaption{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--muted); margin-top:0.75rem; line-height:1.5;}
+.prose section{padding:2.5rem 0; border-bottom:1px solid var(--line); scroll-margin-top:24px;}
+.prose section:last-child{border-bottom:none;}
+.prose h2{font-size:15px; font-family:'IBM Plex Mono',monospace; font-weight:500; color:var(--accent); margin:0 0 0.5rem; cursor:pointer;}
+.prose h3{font-size:26px; font-weight:600; margin:0 0 1rem; line-height:1.25;}
+.prose p{margin:0 0 1rem; max-width:62ch;}
+.prose ul{margin:0 0 1rem; padding-left:1.2rem; max-width:60ch;}
+.prose li{margin-bottom:0.4rem;}
+.term{display:inline-block; margin:0.75rem 0; padding:0.85rem 1rem; background:var(--paper-2); border-left:2px solid var(--accent-dim); font-size:16px; color:var(--ink-soft); max-width:60ch;}
+.term b{color:var(--ink); font-weight:600;}
+.slider-wrap{margin:1rem 0 1.5rem;}
+.slider-wrap input{width:100%;}
+.slider-out{background:var(--paper-2); border:1px solid var(--line); border-radius:6px; padding:1rem; margin-top:0.75rem;}
+.slider-out .life{font-family:'IBM Plex Mono',monospace; font-size:20px; color:var(--accent);}
+.slider-out .desc{font-size:15px; color:var(--ink-soft); margin-top:0.5rem;}
+footer{max-width:640px; margin:0 auto; padding:3rem 24px 6rem; color:var(--muted); font-size:15px; border-top:1px solid var(--line);}
+@media (max-width:860px){ .layout{grid-template-columns:1fr;} .diagram-col{position:static;} h1{font-size:30px;} }
+svg text{font-family:'IBM Plex Mono', monospace;}
+</style>
+</head>
+<body>
+
+<nav class="top-nav">
+  <a href="../index.html" class="nav-btn back">&larr; big tech</a>
+  <a href="../../index.html" class="nav-btn">index</a>
+</nav>
+
+<header>
+  <p class="kicker">big tech track — chapter 01</p>
+  <h1>What is software engineering?</h1>
+  <p class="dek">"Software engineering is programming integrated over time." Drag the slider — the practices that make sense change completely depending on how long the code needs to survive.</p>
+</header>
+
+<main>
+  <div class="layout">
+    <div class="diagram-col">
+      <figure>
+        <svg width="100%" viewBox="0 0 300 60" role="img">
+          <title>Lifespan spectrum from minutes to decades</title>
+          <line x1="15" y1="30" x2="285" y2="30" stroke="var(--line)" stroke-width="2"/>
+          <circle id="life-dot" cx="15" cy="30" r="7" fill="var(--accent)"/>
+          <text x="15" y="50" font-size="9" fill="var(--muted)" text-anchor="start">minutes</text>
+          <text x="285" y="50" font-size="9" fill="var(--muted)" text-anchor="end">decades</text>
+        </svg>
+        <div class="slider-wrap">
+          <input type="range" min="0" max="100" value="0" id="life-slider" oninput="updateLife(this.value)">
+        </div>
+        <div class="slider-out">
+          <div class="life" id="life-label">~1 hour</div>
+          <div class="desc" id="life-desc">Basically unaffected by time. An OS update dropping mid-task isn't your problem.</div>
+        </div>
+        <figcaption>~100,000x separates the two ends of this spectrum — same "programming," completely different obligations.</figcaption>
+      </figure>
+      <div class="stage-nav" id="stage-nav"></div>
+    </div>
+
+    <div class="prose">
+
+      <section id="s1">
+        <h2 onclick="scrollTo(1)">01</h2>
+        <h3>Programming integrated over time</h3>
+        <p>Programming is writing code that works right now. Software engineering is everything required to keep that code working — and keep it changeable — for as long as it actually needs to survive. Three things separate the two: <b>time</b> (will this need to survive an OS or language upgrade?), <b>scale</b> (does it need policies that still work at 10x the team size?), and <b>trade-offs</b> (constant cost-weighing with incomplete information).</p>
+        <div class="term"><b>Sustainability, precisely defined:</b> your project is sustainable if, for its expected lifespan, you're <i>capable</i> of reacting to any valuable change — technical or business. Capable, not obligated. Being incapable is a silent bet that nothing important will ever need to change.</div>
+      </section>
+
+      <section id="s2">
+        <h2 onclick="scrollTo(2)">02</h2>
+        <h3>Hyrum's Law</h3>
+        <p style="font-style:italic; color:var(--ink-soft)">"With a sufficient number of users of an API, it does not matter what you promise in the contract: all observable behaviors of your system will be depended on by somebody."</p>
+        <p>Nothing in a hash set's contract promises a particular iteration order. Doesn't matter — given enough users and enough time, someone will write code depending on whatever order it happens to produce today, maybe even using it as an ad hoc random number source. The undocumented behavior gets depended on anyway.</p>
+        <div class="term">The practical takeaway isn't "never let anything be observable" — that's impossible. It's that every change to a widely-used system has to weigh not just "does this violate the documented contract" but "what real, undocumented behavior might people already be relying on."</div>
+      </section>
+
+      <section id="s3">
+        <h2 onclick="scrollTo(3)">03</h2>
+        <h3>Policies that scale, and ones that quietly don't</h3>
+        <p>The test: imagine the org 10x or 100x bigger. Does the work required <i>per engineer</i> grow along with it? If yes, that's a scaling problem, regardless of how reasonable the policy sounds today.</p>
+        <ul>
+          <li><b>Old-style deprecation</b> ("we delete the old Widget on August 15th, migrate before then") pushes cost onto every downstream team — cost that grows with the dependency graph, not the size of the team doing the deprecating.</li>
+          <li><b>The Churn Rule</b> fixes it: whoever owns the change does the migration themselves, or makes it backward-compatible in place. A few experts doing a well-understood migration beats every downstream team re-learning the problem from scratch.</li>
+          <li><b>The Beyoncé Rule</b> — "if it broke and there was no CI test for it, that's not the fault of the change" — means the CI system, not manual tracking-down of every bespoke dependency, is the source of truth for "did this break anything." That scales flat regardless of headcount.</li>
+          <li><b>Long-lived dev branches</b> work fine at 5-10 branches; the resync cost on every merge grows with the number of branches, which grows with team size — a structural reason trunk-based development tends to win at scale.</li>
+        </ul>
+      </section>
+
+      <section id="s4">
+        <h2 onclick="scrollTo(4)">04</h2>
+        <h3>Shifting left</h3>
+        <p>The developer workflow is a timeline: design → implementation → review → testing → commit → canary → production. The same bug costs more to fix the further right it's found — caught before commit, it's a quick fix by someone who already understands the feature; caught in production, it's an incident that needs someone else to investigate, triage, and remediate live.</p>
+        <svg width="100%" viewBox="0 0 400 90" style="max-width:560px">
+          <title>Shifting left: cost of a bug increases toward production</title>
+          <line x1="20" y1="60" x2="380" y2="60" stroke="var(--line)" stroke-width="1"/>
+          <polyline points="20,55 380,15" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="3 2"/>
+          <text x="20" y="80" font-size="8" fill="var(--muted)">design</text>
+          <text x="90" y="80" font-size="8" fill="var(--muted)">implement</text>
+          <text x="170" y="80" font-size="8" fill="var(--muted)">review</text>
+          <text x="235" y="80" font-size="8" fill="var(--muted)">test</text>
+          <text x="290" y="80" font-size="8" fill="var(--muted)">commit</text>
+          <text x="350" y="80" font-size="8" fill="var(--muted)">production</text>
+          <text x="20" y="30" font-size="8" fill="var(--accent)">cheap</text>
+          <text x="345" y="20" font-size="8" fill="var(--accent)">expensive</text>
+        </svg>
+      </section>
+
+      <section id="s5">
+        <h2 onclick="scrollTo(5)">05</h2>
+        <h3>Trade-offs and six kinds of cost</h3>
+        <p>Financial, resource (compute), personnel (engineer time), transaction (cost of acting), opportunity (cost of <i>not</i> acting), and societal (impact on users, magnified at billion-user scale). Two examples make the "small decision, real trade-off" point concrete:</p>
+        <div class="term"><b>Whiteboard markers.</b> Locking up a $1 marker to prevent hoarding trades away friction-free brainstorming to save almost nothing — a deliberately lopsided trade-off Google chose not to make, once actually priced out.</div>
+        <div class="term"><b>Distributed builds.</b> Moving off local builds clearly saved engineer-time — but once individual engineers stopped feeling the pain of a bloated build directly, nobody was incentivized to keep dependencies lean, and bloat crept back in. Efficiency gains can increase total consumption, not just efficiency (Jevons Paradox).</div>
+      </section>
+
+    </div>
+  </div>
+</main>
+
+<footer>
+  <p>Notes from Software Engineering at Google, ch. 1 — Titus Winters &amp; Tom Manshreck. New track: process and organizational practice at scale, distinct from interview prep and technical depth.</p>
+</footer>
+
+<script>
+const lifeStops = [
+  {pct:0, dot:15, label:"~1 hour", desc:"Basically unaffected by time. An OS update dropping mid-task isn't your problem."},
+  {pct:25, dot:83, label:"~1 month", desc:"A student project or short experiment. Maybe some refactoring for changing requirements, nothing more."},
+  {pct:50, dot:150, label:"~1-2 years", desc:"Startup-scale. Real but limited investment in sustainability — the company might not live long enough to reap slow-payoff infrastructure work."},
+  {pct:75, dot:218, label:"~5-10 years", desc:"The transition zone. Dependencies will change; if you didn't plan for it, the first upgrade is painful precisely because nobody has done it before."},
+  {pct:100, dot:285, label:"decades, unbounded", desc:"Google Search, the Linux kernel. Must assume everything underneath — libraries, OS, language — will eventually change."}
+];
+function updateLife(v){
+  v = Number(v);
+  let closest = lifeStops[0];
+  lifeStops.forEach(s=>{ if(Math.abs(s.pct-v) < Math.abs(closest.pct-v)) closest = s; });
+  document.getElementById('life-dot').setAttribute('cx', closest.dot);
+  document.getElementById('life-label').textContent = closest.label;
+  document.getElementById('life-desc').textContent = closest.desc;
+}
+updateLife(0);
+
+const stages=[1,2,3,4,5];
+const nav = document.getElementById('stage-nav');
+const labels = {1:"programming vs SE",2:"Hyrum's Law",3:"policies that scale",4:"shifting left",5:"trade-offs & cost"};
+stages.forEach(n=>{
+  const b=document.createElement('button');
+  b.textContent = '0'+n+' — '+labels[n];
+  b.dataset.n=n;
+  b.onclick=()=>scrollTo(n);
+  nav.appendChild(b);
+});
+function scrollTo(n){ document.getElementById('s'+n).scrollIntoView({behavior:'smooth', block:'start'}); }
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      const n = Number(e.target.id.replace('s',''));
+      document.querySelectorAll('.stage-nav button').forEach(b=>b.classList.toggle('active', Number(b.dataset.n)===n));
+    }
+  });
+}, {rootMargin:"-20% 0px -70% 0px"});
+stages.forEach(n=>io.observe(document.getElementById('s'+n)));
+</script>
+</body>
+</html>
