@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A framework for system design interviews</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EEEDE6; --paper-2:#E6E4D8; --ink:#1D2321; --ink-soft:#4B4A42;
+  --muted:#8A8776; --line:#CFCCBC; --accent:#B9762B; --accent-dim:#D8C39A;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0; background:var(--paper); color:var(--ink); font-family:'Source Serif 4', Georgia, serif; font-size:19px; line-height:1.65;}
+.mono{font-family:'IBM Plex Mono', monospace}
+.top-nav{max-width:640px; margin:0 auto; padding:1.5rem 24px 0; display:flex; gap:10px;}
+.nav-btn{font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--ink-soft); text-decoration:none; padding:6px 12px; border:1px solid var(--line); border-radius:4px; transition:border-color .15s, color .15s;}
+.nav-btn:hover{border-color:var(--accent); color:var(--accent);}
+.nav-btn.back{color:var(--accent); border-color:var(--accent-dim);}
+header{max-width:640px; margin:0 auto; padding:2.5rem 24px 3rem; border-bottom:1px solid var(--line);}
+header p.kicker{font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--accent); letter-spacing:0.02em; margin:0 0 1.25rem;}
+h1{font-size:36px; font-weight:600; line-height:1.15; margin:0 0 1rem; max-width:520px;}
+header p.dek{font-size:18px; color:var(--ink-soft); max-width:480px; margin:0;}
+main{max-width:940px; margin:0 auto; padding:3rem 24px 6rem;}
+.layout{display:grid; grid-template-columns:300px 1fr; gap:48px; align-items:start;}
+.diagram-col{position:sticky; top:24px;}
+.stage-nav{display:flex; flex-direction:column; gap:2px; margin-top:1.25rem; font-family:'IBM Plex Mono',monospace; font-size:13px;}
+.stage-nav button{all:unset; cursor:pointer; padding:7px 10px; border-radius:3px; color:var(--muted); border-left:2px solid transparent;}
+.stage-nav button.active{color:var(--ink); border-left:2px solid var(--accent); background:var(--paper-2);}
+.stage-nav button:hover{color:var(--ink);}
+figure{margin:0; padding:1.25rem; background:var(--paper-2); border:1px solid var(--line); border-radius:4px;}
+figcaption{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--muted); margin-top:0.75rem; line-height:1.5;}
+.prose section{padding:2.5rem 0; border-bottom:1px solid var(--line); scroll-margin-top:24px;}
+.prose section:last-child{border-bottom:none;}
+.prose h2{font-size:15px; font-family:'IBM Plex Mono',monospace; font-weight:500; color:var(--accent); margin:0 0 0.5rem; cursor:pointer;}
+.prose h3{font-size:26px; font-weight:600; margin:0 0 1rem; line-height:1.25;}
+.prose p{margin:0 0 1rem; max-width:62ch;}
+.prose ul{margin:0 0 1rem; padding-left:1.2rem; max-width:60ch;}
+.prose li{margin-bottom:0.4rem;}
+.term{display:inline-block; margin:0.75rem 0; padding:0.85rem 1rem; background:var(--paper-2); border-left:2px solid var(--accent-dim); font-size:16px; color:var(--ink-soft); max-width:60ch;}
+.term b{color:var(--ink); font-weight:600;}
+.dolist{display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:1rem;}
+.dolist h4{font-family:'IBM Plex Mono',monospace; font-size:13px; margin:0 0 0.75rem;}
+.dolist.dos h4{color:var(--accent);}
+.dolist ul{font-size:15px; padding-left:1.1rem;}
+footer{max-width:640px; margin:0 auto; padding:3rem 24px 6rem; color:var(--muted); font-size:15px; border-top:1px solid var(--line);}
+@media (max-width:860px){ .layout{grid-template-columns:1fr;} .diagram-col{position:static;} h1{font-size:28px;} .dolist{grid-template-columns:1fr;} }
+svg text{font-family:'IBM Plex Mono', monospace;}
+</style>
+</head>
+<body>
+
+<nav class="top-nav">
+  <a href="../index.html" class="nav-btn back">&larr; interviews</a>
+  <a href="../../index.html" class="nav-btn">index</a>
+</nav>
+
+<header>
+  <p class="kicker">interview prep — chapter 03</p>
+  <h1>A framework for system design interviews</h1>
+  <p class="dek">The design matters less than the process you used to get there. Four steps, a rough time budget, and the checklist worth internalizing before the next on-site.</p>
+</header>
+
+<main>
+  <div class="layout">
+    <div class="diagram-col">
+      <figure>
+        <svg width="100%" viewBox="0 0 300 140" role="img">
+          <title>Time allocation across the four steps of a 45-minute system design interview</title>
+          <rect id="seg1" x="10" y="20" width="53" height="34" fill="var(--ink)" rx="3"/>
+          <rect id="seg2" x="66" y="20" width="83" height="34" fill="var(--ink-soft)" rx="3" opacity="0.3"/>
+          <rect id="seg3" x="152" y="20" width="117" height="34" fill="var(--ink-soft)" rx="3" opacity="0.3"/>
+          <rect id="seg4" x="272" y="20" width="27" height="34" fill="var(--ink-soft)" rx="3" opacity="0.3"/>
+          <text x="10" y="72" font-size="8.5" fill="var(--muted)">01 scope</text>
+          <text x="66" y="72" font-size="8.5" fill="var(--muted)">02 high-level</text>
+          <text x="152" y="72" font-size="8.5" fill="var(--muted)">03 deep dive</text>
+          <text x="272" y="72" font-size="8.5" fill="var(--muted)">04 wrap</text>
+          <text x="10" y="90" font-size="8.5" fill="var(--ink-soft)">3\u201310 min</text>
+          <text x="66" y="90" font-size="8.5" fill="var(--ink-soft)">10\u201315 min</text>
+          <text x="152" y="90" font-size="8.5" fill="var(--ink-soft)">10\u201325 min</text>
+          <text x="272" y="90" font-size="8.5" fill="var(--ink-soft)">3\u20135 min</text>
+          <text x="150" y="118" text-anchor="middle" font-size="9" fill="var(--accent)">of a 45-minute session</text>
+        </svg>
+        <figcaption id="stage-caption">step 1 of 4 — understand the problem and establish scope.</figcaption>
+      </figure>
+      <div class="stage-nav" id="stage-nav"></div>
+    </div>
+
+    <div class="prose">
+
+      <section id="s1">
+        <h2 onclick="setStage(1)">01</h2>
+        <h3>Understand the problem and establish scope</h3>
+        <p>The single biggest mistake in this step is answering fast without understanding the question — confidence isn't a substitute for clarity, and an interviewer reads "jumped straight to an answer" as a warning sign, not a strength. Slow down. Ask questions. If the interviewer can't answer directly, they'll ask you to state an assumption instead — write it down, you'll need it later.</p>
+        <div class="term"><b>A starting question template:</b> What specific features are we building? How many users does the product have? How fast is the company expecting to scale — what's the load in 3, 6, 12 months? What's the existing tech stack, and what internal services could simplify this?</div>
+        <p><b>Worked example — a news feed system.</b> The clarifying pass covers: mobile, web, or both (both); the two features that matter most (posting, viewing friends' feeds); whether the feed is strict reverse-chronological or ranked (kept simple: reverse-chronological); max friends per user (5,000); daily active users (10 million); and whether posts include media (yes — images and video).</p>
+      </section>
+
+      <section id="s2">
+        <h2 onclick="setStage(2)">02</h2>
+        <h3>Propose high-level design and get buy-in</h3>
+        <p>Reach agreement with the interviewer on a blueprint, treating them as a collaborator rather than a silent judge. Sketch box diagrams with the key components — clients, APIs, web servers, data stores, cache, CDN, message queue. Run back-of-the-envelope math to check the blueprint actually fits the scale from step 1, and say out loud that you're about to do this before diving in. Walk through a few concrete use cases — this often surfaces edge cases you hadn't considered.</p>
+        <div class="term">Whether to go down to API endpoints and schema detail depends on the problem's scope — too low-level for "design Google search," entirely fair game for "design the backend of a multiplayer poker game." When unsure, ask.</div>
+        <p><b>Worked example continued.</b> The news feed splits into two flows: <i>feed publishing</i> (a new post writes to cache/database, then gets pushed into friends' feeds) and <i>newsfeed building</i> (aggregating friends' posts, sorted reverse-chronologically, at read time).</p>
+      </section>
+
+      <section id="s3">
+        <h2 onclick="setStage(3)">03</h2>
+        <h3>Design deep dive</h3>
+        <p>By now you and the interviewer should agree on scope, have a blueprint, gotten feedback on it, and have a sense of where to go deeper. This varies a lot: sometimes the interviewer wants more breadth, sometimes (especially for senior candidates) performance characteristics and bottlenecks, and most often one or two specific components in real depth — the hash function for a URL shortener, or latency and presence tracking for a chat system.</p>
+        <div class="term"><b>Time management matters more here than anywhere else.</b> It's easy to fall into a fascinating rabbit hole that doesn't actually demonstrate scalable-system-design ability — spending real interview time on the exact mechanics of a specific ranking algorithm burns the clock without proving the skill being assessed.</div>
+      </section>
+
+      <section id="s4">
+        <h2 onclick="setStage(4)">04</h2>
+        <h3>Wrap up</h3>
+        <ul>
+          <li>Identify bottlenecks in your own design and how you'd improve them — never claim it's perfect, that's an immediate credibility loss.</li>
+          <li>Recap the design, especially if you proposed multiple approaches during the session.</li>
+          <li>Error cases (server failure, network loss) are worth discussing.</li>
+          <li>Operational concerns: how would you monitor metrics and error logs, how would you roll this out?</li>
+          <li>The "next scale curve" is a favorite follow-up — if this supports 1M users, what changes to support 10M?</li>
+          <li>If time remains, propose additional refinements you'd make given more of it.</li>
+        </ul>
+      </section>
+
+      <section id="s5">
+        <h2 onclick="setStage(5)">05</h2>
+        <h3>Dos and don'ts</h3>
+        <div class="dolist">
+          <div class="dolist dos">
+            <h4>DO</h4>
+            <ul>
+              <li>Always ask for clarification — never assume your assumption is correct.</li>
+              <li>Understand the actual requirements before proposing anything.</li>
+              <li>Accept there's no single right answer — startup-scale and millions-of-users solutions to the same prompt look completely different, and that's fine.</li>
+              <li>Say what you're thinking out loud, constantly.</li>
+              <li>Suggest multiple approaches where it makes sense.</li>
+              <li>Agree on the blueprint first, then drill into the most critical component first.</li>
+              <li>Bounce ideas off the interviewer — a good one is a teammate, not a judge.</li>
+              <li>Never give up, even when a component turns out harder than expected.</li>
+            </ul>
+          </div>
+          <div class="dolist donts">
+            <h4>DON'T</h4>
+            <ul>
+              <li>Show up unprepared for the typical/common questions.</li>
+              <li>Jump into a solution before clarifying requirements and assumptions.</li>
+              <li>Go deep on one component too early — high-level first, then drill down.</li>
+              <li>Hesitate to ask for a hint if stuck.</li>
+              <li>Think in silence — communicate continuously.</li>
+              <li>Assume you're done once you've given a design — you're done when the interviewer says so.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</main>
+
+<footer>
+  <p>Notes from System Design Interview by Alex Xu, ch. 3 — a process chapter, not an architecture one, kept in full detail on purpose.</p>
+</footer>
+
+<script>
+const stages=[1,2,3,4,5];
+const captions = {
+  1:"step 1 of 4 — understand the problem and establish scope.",
+  2:"step 2 of 4 — propose high-level design and get buy-in.",
+  3:"step 3 of 4 — design deep dive.",
+  4:"step 4 of 4 — wrap up.",
+  5:"reference — the full dos and don'ts checklist."
+};
+const segIds = {1:'seg1',2:'seg2',3:'seg3',4:'seg4'};
+const nav = document.getElementById('stage-nav');
+const labels = {1:"understand & scope",2:"high-level design",3:"deep dive",4:"wrap up",5:"dos & don'ts"};
+stages.forEach(n=>{
+  const b=document.createElement('button');
+  b.textContent = '0'+n+' — '+labels[n];
+  b.dataset.n=n;
+  b.onclick=()=>{ setStage(n); document.getElementById('s'+n).scrollIntoView({behavior:'smooth', block:'start'}); };
+  nav.appendChild(b);
+});
+function setStage(n){
+  [1,2,3,4].forEach(i=>{
+    const seg = document.getElementById(segIds[i]);
+    seg.setAttribute('opacity', i===n ? '1' : '0.3');
+    seg.setAttribute('fill', i===n ? 'var(--accent)' : 'var(--ink-soft)');
+  });
+  document.getElementById('stage-caption').textContent = captions[n];
+  document.querySelectorAll('.stage-nav button').forEach(b=>b.classList.toggle('active', Number(b.dataset.n)===n));
+}
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{ if(e.isIntersecting){ setStage(Number(e.target.id.replace('s',''))); } });
+}, {rootMargin:"-20% 0px -70% 0px"});
+stages.forEach(n=>io.observe(document.getElementById('s'+n)));
+setStage(1);
+</script>
+</body>
+</html>
