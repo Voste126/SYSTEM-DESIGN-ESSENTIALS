@@ -115,3 +115,51 @@ Every technique in this section is answering the exact same question in a progre
 
 - How do you choose between size-tiered and leveled compaction for a given workload in practice, beyond "Cassandra lets you pick either"?
 - At what actual key-count or data-volume threshold does a hash index (Bitcask-style) stop being the right choice and an LSM-tree become clearly worth the added complexity?
+
+---
+
+## Reference addendum — real-world implementations, Bitcask/Riak, and compaction types
+(These points already exist in the sections above; pulled out here as standalone lookup tables so they're easy to find again later without re-reading the full prose.)
+
+### The practical engineering details, as a checklist
+
+These are the unglamorous pieces that turn "keep a hash map of offsets" into a real, crash-safe storage engine:
+
+| Concern | What it means | How it's solved |
+|---|---|---|
+| **File format** | CSV-style text is slow and needs escaping | Binary format: length-prefixed strings, no escaping needed |
+| **Deleting records** | Can't remove a line from an append-only file | Append a **tombstone** marker for that key; merging drops all older values once it sees the tombstone |
+| **Crash recovery** | In-memory hash maps vanish on restart | Re-scanning a whole segment works but is slow; Bitcask snapshots each segment's hash map to disk so recovery just reloads the snapshot |
+| **Partially written records** | A crash mid-write can corrupt a record | Checksums let corrupted partial records be detected and skipped |
+| **Concurrency control** | Multiple writers could corrupt the log | One writer thread appends sequentially; finished segments are immutable, so many readers can read concurrently with zero coordination |
+
+### Bitcask and Riak — the concrete example worth remembering
+
+**Bitcask** is Riak's default storage engine, and it's the real-world implementation of the plain hash-index approach (not SSTables/LSM — this is the simpler, earlier design in the chapter). Worth keeping distinct in your notes because it's a genuinely different trade-off than everything that follows it:
+
+- **Requirement**: every key must fit in RAM, since the hash map lives entirely in memory. Values can be far larger than RAM, since fetching one only costs a single disk seek.
+- **Best-fit workload**: a relatively small, bounded set of keys that get updated very frequently — the classic example is a play-count counter per video. Lots of writes, but few distinct keys, so keeping all keys in memory is realistic.
+- **Where it breaks down**: once your key count grows too large to fit in memory, or you need range queries (e.g., "every key between X and Y"), Bitcask's approach structurally can't help — this is exactly the gap SSTables/LSM-trees exist to close.
+
+### Real-world software mapped to the data structure it actually uses
+
+| System | Data structure | Notes |
+|---|---|---|
+| **Bitcask** (Riak's default engine) | Hash index over log segments | The simplest design in the chapter; all keys must fit in RAM |
+| **LevelDB** | LSM-tree (memtable + SSTables) | Embeddable key-value library; can also be used inside Riak as a Bitcask alternative; uses **leveled compaction** (where the name comes from) |
+| **RocksDB** | LSM-tree (memtable + SSTables) | Also embeddable; uses **leveled compaction**, same lineage as LevelDB |
+| **Cassandra** | LSM-tree (memtable + SSTables) | Inspired by Google's Bigtable paper; supports **both** size-tiered and leveled compaction, chosen per use case |
+| **HBase** | LSM-tree (memtable + SSTables) | Also Bigtable-inspired; uses **size-tiered compaction** |
+| **Lucene** (powers Elasticsearch, Solr) | SSTable-like sorted files for its term dictionary | Not a plain key-value store — key is a search term, value is a *postings list* (document IDs containing that term); same sorted-and-merged-in-background idea applied to full-text search |
+
+Worth noting explicitly: **the terms "SSTable" and "memtable" both originate from Google's Bigtable paper** — LevelDB, RocksDB, Cassandra, and HBase all trace back to that same lineage, even though they're separate projects. The technique itself was formally named **Log-Structured Merge-Tree (LSM-Tree)** by Patrick O'Neil and colleagues, building on earlier log-structured filesystem research — that's where "LSM" in "LSM-tree" comes from, and it predates all of the specific systems in the table above.
+
+### Compaction strategies, compared directly
+
+| Strategy | How it works | Used by |
+|---|---|---|
+| **Size-tiered** | Newer, smaller SSTables get progressively merged into older, larger ones | HBase; also available in Cassandra |
+| **Leveled** | The key range is split into smaller SSTables; older data moves into separate "levels," letting compaction proceed incrementally and use less disk space overall | LevelDB, RocksDB (literally where "LevelDB" gets its name); also available in Cassandra |
+
+Cassandra deliberately supports both, so the choice can be made per use case rather than being locked into the engine's default.
+

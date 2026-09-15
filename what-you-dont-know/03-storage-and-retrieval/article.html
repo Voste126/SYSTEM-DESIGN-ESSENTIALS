@@ -62,6 +62,11 @@ main{max-width:960px; margin:0 auto; padding:3rem 24px 6rem;}
 .gate{width:40px; height:40px; border:2px solid var(--ink); border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-size:16px; transition:border-color .3s, color .3s;}
 .gate.blocked{border-color:var(--bad); color:var(--bad);}
 footer{max-width:640px; margin:0 auto; padding:3rem 24px 6rem; color:var(--muted); font-size:15px; border-top:1px solid var(--line);}
+table.ref{border-collapse:collapse; font-size:15px; margin:1rem 0 1.5rem; width:100%; max-width:72ch;}
+table.ref th, table.ref td{border-bottom:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top;}
+table.ref th{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); font-weight:500;}
+table.ref td.mono{font-family:'IBM Plex Mono',monospace; font-size:13.5px;}
+table.ref tr.highlight td{background:var(--paper-2);}
 </style>
 </head>
 <body>
@@ -145,6 +150,33 @@ footer{max-width:640px; margin:0 auto; padding:3rem 24px 6rem; color:var(--muted
   </div>
 </div>
 <div class="term"><b>The crash-safety detail this hides:</b> every write also hits a separate, unsorted write-ahead log on disk immediately — its only job is rebuilding the memtable if the process crashes before a flush. Once a flush completes, that log entry is discarded.</div>
+</section>
+
+<section>
+<h2 class="tag" id="e">05</h2>
+<h3>Reference: real-world implementations and compaction strategies</h3>
+<p>The mechanics above are the same across every real system that uses them — what differs is which compaction strategy each one picked, and whether it's using a hash index at all or has moved to the full LSM-tree cascade.</p>
+
+<div class="term"><b>The practical engineering checklist.</b> Turning "a hash map of offsets" into a real, crash-safe engine takes five specific pieces: a <b>binary file format</b> (length-prefixed strings, no CSV escaping headaches); <b>tombstones</b> for deletion (a marker appended for a key, since you can't remove a line from an append-only file); <b>crash recovery</b> via periodic hash-map snapshots to disk (so restart doesn't mean re-scanning every segment from scratch); <b>checksums</b> to detect and skip partially-written records from a mid-write crash; and <b>a single writer thread</b> with immutable finished segments, so concurrent reads need zero coordination.</div>
+
+<table class="ref">
+<tr><th>system</th><th>data structure</th><th>compaction</th><th>notes</th></tr>
+<tr class="highlight"><td class="mono">Bitcask (Riak)</td><td>hash index over log segments</td><td>—</td><td>the simplest design in the chapter; every key must fit in RAM</td></tr>
+<tr><td class="mono">LevelDB</td><td>LSM-tree (memtable + SSTables)</td><td class="mono">leveled</td><td>embeddable; can replace Bitcask inside Riak; name comes from "leveled" compaction</td></tr>
+<tr><td class="mono">RocksDB</td><td>LSM-tree (memtable + SSTables)</td><td class="mono">leveled</td><td>same lineage as LevelDB, also embeddable</td></tr>
+<tr><td class="mono">Cassandra</td><td>LSM-tree (memtable + SSTables)</td><td class="mono">size-tiered or leveled</td><td>Bigtable-inspired; supports both strategies, chosen per use case</td></tr>
+<tr><td class="mono">HBase</td><td>LSM-tree (memtable + SSTables)</td><td class="mono">size-tiered</td><td>also Bigtable-inspired</td></tr>
+<tr><td class="mono">Lucene</td><td>SSTable-like sorted term dictionary</td><td>background merge</td><td>powers Elasticsearch/Solr; key = search term, value = postings list (matching document IDs)</td></tr>
+</table>
+
+<div class="term"><b>Where the names come from.</b> "SSTable" and "memtable" both originate in Google's Bigtable paper — LevelDB, RocksDB, Cassandra, and HBase all trace back to that same lineage despite being separate projects. The technique itself was formally named the <b>Log-Structured Merge-Tree (LSM-Tree)</b> by Patrick O'Neil and colleagues, predating every specific system in the table above.</div>
+
+<table class="ref">
+<tr><th>compaction strategy</th><th>how it works</th><th>used by</th></tr>
+<tr><td class="mono">size-tiered</td><td>newer, smaller SSTables progressively merge into older, larger ones</td><td>HBase, Cassandra</td></tr>
+<tr><td class="mono">leveled</td><td>key range split into smaller SSTables; older data moves into separate "levels," so compaction is more incremental and uses less disk space</td><td>LevelDB, RocksDB, Cassandra</td></tr>
+</table>
+
 </section>
 
 </main>
