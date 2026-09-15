@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data structures that power your database</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EEEDE6; --paper-2:#E6E4D8; --ink:#1D2321; --ink-soft:#4B4A42;
+  --muted:#8A8776; --line:#CFCCBC; --accent:#B9762B; --accent-dim:#D8C39A; --bad:#A6493A;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0; background:var(--paper); color:var(--ink); font-family:'Source Serif 4', Georgia, serif; font-size:19px; line-height:1.65;}
+.mono{font-family:'IBM Plex Mono', monospace}
+.top-nav{max-width:640px; margin:0 auto; padding:1.5rem 24px 0; display:flex; gap:10px;}
+.nav-btn{font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--ink-soft); text-decoration:none; padding:6px 12px; border:1px solid var(--line); border-radius:4px;}
+.nav-btn:hover{border-color:var(--accent); color:var(--accent);}
+.nav-btn.back{color:var(--accent); border-color:var(--accent-dim);}
+header{max-width:640px; margin:0 auto; padding:2.5rem 24px 3rem; border-bottom:1px solid var(--line);}
+header p.kicker{font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--accent); margin:0 0 1.25rem;}
+h1{font-size:34px; font-weight:600; line-height:1.15; margin:0 0 1rem; max-width:540px;}
+header p.dek{font-size:18px; color:var(--ink-soft); max-width:520px; margin:0;}
+main{max-width:960px; margin:0 auto; padding:3rem 24px 6rem;}
+.prose h2.tag{font-size:15px; font-family:'IBM Plex Mono',monospace; font-weight:500; color:var(--accent); margin:2.5rem 0 0.4rem;}
+.prose h3{font-size:26px; font-weight:600; margin:0 0 1rem;}
+.prose p{margin:0 0 1rem; max-width:72ch;}
+.prose section{padding-bottom:2rem; border-bottom:1px solid var(--line); margin-bottom:1rem;}
+.term{display:block; margin:0.75rem 0; padding:0.85rem 1rem; background:var(--paper-2); border-left:2px solid var(--accent-dim); font-size:16px; color:var(--ink-soft); max-width:70ch;}
+.term b{color:var(--ink); font-weight:600;}
+.panel{background:var(--paper-2); border:1px solid var(--line); border-radius:8px; padding:1.25rem; margin:1.25rem 0;}
+.playbtn{font-family:'IBM Plex Mono',monospace; font-size:13px; padding:7px 14px; border:1px solid var(--accent); color:var(--accent); background:none; border-radius:5px; cursor:pointer;}
+.playbtn:hover{background:var(--accent); color:var(--paper);}
+.status{font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--muted); margin-top:0.75rem;}
+.rows{margin-top:1rem; font-family:'IBM Plex Mono',monospace; font-size:13px;}
+.row{display:flex; gap:10px; padding:6px 10px; border-bottom:1px solid var(--line); transition:background .2s, color .2s;}
+.row.scan{background:var(--accent-dim);}
+.row.hit{background:var(--accent); color:var(--paper); font-weight:600;}
+.row.dim{opacity:0.3;}
+.hmap{display:flex; gap:16px; margin-top:1rem;}
+.hmap-entry{font-family:'IBM Plex Mono',monospace; font-size:13px; padding:8px 12px; border:1px solid var(--line); border-radius:5px; transition:border-color .2s, background .2s;}
+.hmap-entry.hit{border-color:var(--accent); background:var(--paper);}
+.seg-box{border:1px solid var(--line); border-radius:6px; padding:10px; font-family:'IBM Plex Mono',monospace; font-size:12px; transition:opacity .4s, transform .5s;}
+.seg-row{display:flex; justify-content:space-between; padding:3px 0; transition:opacity .3s;}
+.seg-row.dup{opacity:0.25; text-decoration:line-through;}
+.merge-cols{display:flex; gap:20px; margin-top:1rem;}
+.merge-col{flex:1;}
+.merge-out{margin-top:1rem; padding-top:1rem; border-top:1px dashed var(--line);}
+.mem-flow{display:flex; align-items:center; gap:14px; margin-top:1rem; flex-wrap:wrap;}
+.mem-box{border:1px solid var(--ink); border-radius:6px; padding:10px 14px; font-family:'IBM Plex Mono',monospace; font-size:12px; text-align:center; min-width:90px;}
+.mem-box.fill{background:var(--paper);}
+.mem-bar{height:6px; background:var(--line); border-radius:3px; margin-top:6px; overflow:hidden;}
+.mem-bar-inner{height:100%; background:var(--accent); width:0%; transition:width .3s;}
+.arrow{font-size:18px; color:var(--muted);}
+.sstable-list{display:flex; gap:8px; flex-wrap:wrap; margin-top:0.5rem;}
+.sst{border:1px solid var(--accent-dim); border-radius:5px; padding:6px 10px; font-family:'IBM Plex Mono',monospace; font-size:11px; background:var(--paper); transition:opacity .4s;}
+.bloom-gate{display:flex; align-items:center; gap:10px; margin-top:1rem;}
+.gate{width:40px; height:40px; border:2px solid var(--ink); border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-size:16px; transition:border-color .3s, color .3s;}
+.gate.blocked{border-color:var(--bad); color:var(--bad);}
+footer{max-width:640px; margin:0 auto; padding:3rem 24px 6rem; color:var(--muted); font-size:15px; border-top:1px solid var(--line);}
+</style>
+</head>
+<body>
+
+<nav class="top-nav">
+  <a href="../index.html" class="nav-btn back">&larr; what you don't know</a>
+  <a href="../../index.html" class="nav-btn">index</a>
+</nav>
+
+<header>
+  <p class="kicker">senior engineer track — chapter 03 (part 1)</p>
+  <h1>Data structures that power your database</h1>
+  <p class="dek">Appending to a file is the fastest possible write. Everything below exists to answer one question: how do you get fast reads without giving that up? Press play on each panel — these actually move.</p>
+</header>
+
+<main class="prose">
+
+<section>
+<h2 class="tag" id="a">01</h2>
+<h3>The naive scan vs. the hash index jump</h3>
+<p>The simplest database is a file you only ever append to. Reading means scanning from the top until you find the last matching line — cost grows with every record you add. A hash index fixes this by remembering exactly where each key's latest value lives, so reading becomes one direct jump instead of a scan.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runScan()">&#9654; scan for key 42 (no index)</button>
+  <button class="playbtn" onclick="runJump()">&#9654; look up key 42 (hash index)</button>
+  <div class="rows" id="scanRows"></div>
+  <div class="hmap" id="hmapView"></div>
+  <div class="status" id="scanStatus">Press a button to see what each approach actually costs.</div>
+</div>
+<div class="term"><b>Same data, two strategies.</b> Every append is identical either way — the difference is entirely in how a read finds its way back to the data.</div>
+</section>
+
+<section>
+<h2 class="tag" id="b">02</h2>
+<h3>Compaction and merging</h3>
+<p>Segments fill up and get closed. Compaction throws away every value for a key except the newest one within that segment. Merging then combines several compacted segments into one — always producing a new file, since segments are never edited in place.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runCompact()">&#9654; compact + merge two segments</button>
+  <div style="display:flex; gap:20px; margin-top:1rem; flex-wrap:wrap;">
+    <div class="seg-box" id="segA" style="flex:1; min-width:180px"></div>
+    <div class="seg-box" id="segB" style="flex:1; min-width:180px"></div>
+  </div>
+  <div class="seg-box" id="segMerged" style="margin-top:1rem; opacity:0"></div>
+  <div class="status" id="compactStatus">Two segments, each with an overwritten key. Press play.</div>
+</div>
+</section>
+
+<section>
+<h2 class="tag" id="c">03</h2>
+<h3>SSTables: sorted merging, mergesort-style</h3>
+<p>Once segments are sorted by key, merging two of them is exactly mergesort: always take whichever front value is smallest, advance that pointer, repeat. This works efficiently even when both files are far bigger than memory.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runMergesort()">&#9654; merge two sorted SSTables</button>
+  <div class="merge-cols">
+    <div class="merge-col"><div class="status">segment A (older)</div><div class="rows" id="mergeA"></div></div>
+    <div class="merge-col"><div class="status">segment B (newer)</div><div class="rows" id="mergeB"></div></div>
+  </div>
+  <div class="merge-out"><div class="status">merged output (sorted)</div><div class="rows" id="mergeOut"></div></div>
+</div>
+<div class="term"><b>Why this also fixes the "must fit in memory" problem.</b> Because the file is sorted, a sparse index — one entry every few kilobytes — is enough. Knowing the offsets of <span class="mono">handbag</span> and <span class="mono">handsome</span> tells you <span class="mono">handiwork</span> must be between them, without ever storing it directly.</div>
+</section>
+
+<section>
+<h2 class="tag" id="d">04</h2>
+<h3>The LSM-tree in motion: memtable, flush, and a Bloom filter shortcut</h3>
+<p>Writes land in an in-memory sorted tree (the memtable). Once it's full, it flushes to disk as a new SSTable. In the background, older SSTables keep merging into fewer, larger ones. A Bloom filter sits in front of the whole cascade, cheaply ruling out segments that can't possibly contain a key you're looking for.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runWrite()">&#9654; write a record</button>
+  <button class="playbtn" onclick="runLookupMissing()">&#9654; look up a nonexistent key</button>
+  <div class="mem-flow">
+    <div class="mem-box fill" id="memtableBox">memtable<div class="mem-bar"><div class="mem-bar-inner" id="memBar"></div></div></div>
+    <div class="arrow">&rarr;</div>
+    <div>
+      <div class="status">on disk (oldest &rarr; newest)</div>
+      <div class="sstable-list" id="sstList"></div>
+    </div>
+  </div>
+  <div class="bloom-gate">
+    <span class="status">bloom filter:</span>
+    <div class="gate" id="bloomGate">?</div>
+    <span class="status" id="bloomStatus">checks each segment before touching disk</span>
+  </div>
+</div>
+<div class="term"><b>The crash-safety detail this hides:</b> every write also hits a separate, unsorted write-ahead log on disk immediately — its only job is rebuilding the memtable if the process crashes before a flush. Once a flush completes, that log entry is discarded.</div>
+</section>
+
+</main>
+
+<footer>
+  <p>Notes from Designing Data-Intensive Applications, ch. 3 — Martin Kleppmann. Part 1: hash indexes and SSTables/LSM-trees. B-trees and the B-tree/LSM comparison are a separate future addition.</p>
+</footer>
+
+<script>
+// ---- Stage 1: scan vs jump ----
+const records = [
+  {k:'123456', v:'London', off:0},
+  {k:'42', v:'San Francisco (old)', off:1},
+  {k:'77', v:'Berlin', off:2},
+  {k:'42', v:'San Francisco (older)', off:3},
+  {k:'901', v:'Tokyo', off:4},
+  {k:'42', v:'San Francisco (latest)', off:5},
+];
+function renderRows(){
+  const el = document.getElementById('scanRows');
+  el.innerHTML = records.map((r,i)=>`<div class="row" id="row${i}"><span>${r.off}</span><span>${r.k}</span><span>${r.v}</span></div>`).join('');
+}
+renderRows();
+function resetRows(){ records.forEach((r,i)=>{ const el=document.getElementById('row'+i); el.className='row'; }); }
+async function runScan(){
+  resetRows();
+  document.getElementById('hmapView').innerHTML='';
+  const status = document.getElementById('scanStatus');
+  let found=null;
+  for(let i=0;i<records.length;i++){
+    document.getElementById('row'+i).classList.add('scan');
+    status.textContent = `scanning row ${i+1} of ${records.length}...`;
+    await sleep(280);
+    if(records[i].k==='42') found=i;
+  }
+  records.forEach((r,i)=>{ if(r.k!=='42' || i!==found) document.getElementById('row'+i).classList.add('dim'); });
+  document.getElementById('row'+found).className='row hit';
+  status.textContent = `found it — but only after scanning all ${records.length} rows. cost grows with every record you add.`;
+}
+async function runJump(){
+  resetRows();
+  const hmapEl = document.getElementById('hmapView');
+  hmapEl.innerHTML = `<div class="hmap-entry" id="hEntry">42 &rarr; offset 5</div>`;
+  const status = document.getElementById('scanStatus');
+  status.textContent = 'checking hash map for key 42...';
+  await sleep(300);
+  document.getElementById('hEntry').classList.add('hit');
+  status.textContent = 'hash map says offset 5 — jumping straight there, no scanning.';
+  await sleep(300);
+  document.getElementById('row5').className = 'row hit';
+  status.textContent = 'found it in one seek, regardless of how many records exist.';
+}
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+// ---- Stage 2: compaction + merge ----
+function renderSeg(id, rows){
+  document.getElementById(id).innerHTML = rows.map(r=>`<div class="seg-row ${r.dup?'dup':''}">${r.k} &rarr; ${r.v}</div>`).join('');
+}
+const segAData = [{k:'42',v:'v1',dup:true},{k:'77',v:'v1',dup:false},{k:'42',v:'v2 (latest)',dup:false}];
+const segBData = [{k:'88',v:'v1',dup:true},{k:'88',v:'v2 (latest)',dup:false},{k:'99',v:'v1',dup:false}];
+renderSeg('segA', segAData.map(r=>({...r,dup:false})));
+renderSeg('segB', segBData.map(r=>({...r,dup:false})));
+async function runCompact(){
+  const status = document.getElementById('compactStatus');
+  status.textContent = 'compacting: dropping superseded values for repeated keys...';
+  renderSeg('segA', segAData);
+  renderSeg('segB', segBData);
+  await sleep(700);
+  status.textContent = 'merging the two compacted segments into one new file...';
+  document.getElementById('segA').style.opacity='0.3';
+  document.getElementById('segB').style.opacity='0.3';
+  await sleep(500);
+  const merged = [
+    {k:'42',v:'v2 (latest)'}, {k:'77',v:'v1'}, {k:'88',v:'v2 (latest)'}, {k:'99',v:'v1'}
+  ];
+  document.getElementById('segMerged').style.opacity='1';
+  renderSeg('segMerged', merged.map(r=>({...r,dup:false})));
+  status.textContent = 'done — one merged segment, sorted by the process, duplicates gone. old files can now be deleted.';
+}
+
+// ---- Stage 3: mergesort-style SSTable merge ----
+const A = [{k:'bear',v:'v1'},{k:'fox',v:'v1'},{k:'owl',v:'v1'}];
+const B = [{k:'cat',v:'v2'},{k:'fox',v:'v2 (newer)'},{k:'yak',v:'v2'}];
+function renderMergeCols(){
+  document.getElementById('mergeA').innerHTML = A.map(r=>`<div class="row">${r.k} : ${r.v}</div>`).join('');
+  document.getElementById('mergeB').innerHTML = B.map(r=>`<div class="row">${r.k} : ${r.v}</div>`).join('');
+  document.getElementById('mergeOut').innerHTML = '';
+}
+renderMergeCols();
+async function runMergesort(){
+  renderMergeCols();
+  let i=0,j=0; const out=[];
+  const rowsA = document.getElementById('mergeA').children;
+  const rowsB = document.getElementById('mergeB').children;
+  while(i<A.length && j<B.length){
+    rowsA[i]?.classList.add('scan'); rowsB[j]?.classList.add('scan');
+    await sleep(450);
+    if(A[i].k < B[j].k){ out.push(A[i]); rowsA[i].className='row dim'; i++; }
+    else if(A[i].k > B[j].k){ out.push(B[j]); rowsB[j].className='row dim'; j++; }
+    else { out.push(B[j]); rowsA[i].className='row dim'; rowsB[j].className='row dim'; i++; j++; }
+    document.getElementById('mergeOut').innerHTML = out.map(r=>`<div class="row hit">${r.k} : ${r.v}</div>`).join('');
+  }
+  while(i<A.length){ out.push(A[i]); rowsA[i].className='row dim'; i++; document.getElementById('mergeOut').innerHTML = out.map(r=>`<div class="row hit">${r.k} : ${r.v}</div>`).join(''); await sleep(300); }
+  while(j<B.length){ out.push(B[j]); rowsB[j].className='row dim'; j++; document.getElementById('mergeOut').innerHTML = out.map(r=>`<div class="row hit">${r.k} : ${r.v}</div>`).join(''); await sleep(300); }
+}
+
+// ---- Stage 4: memtable flush + bloom filter ----
+let memFill = 0;
+let sstables = [];
+function renderSst(){
+  document.getElementById('sstList').innerHTML = sstables.map(n=>`<div class="sst">SSTable ${n}</div>`).join('') || '<span class="status">(none yet)</span>';
+}
+renderSst();
+async function runWrite(){
+  memFill += 25;
+  document.getElementById('memBar').style.width = Math.min(memFill,100)+'%';
+  if(memFill >= 100){
+    await sleep(300);
+    document.getElementById('memtableBox').style.transform = 'translateX(10px)';
+    await sleep(200);
+    document.getElementById('memtableBox').style.transform = 'translateX(0)';
+    sstables.push(sstables.length+1);
+    renderSst();
+    if(sstables.length>=4){
+      await sleep(400);
+      sstables = ['(merged)'];
+      renderSst();
+    }
+    memFill = 0;
+    document.getElementById('memBar').style.width = '0%';
+  }
+}
+async function runLookupMissing(){
+  const gate = document.getElementById('bloomGate');
+  const status = document.getElementById('bloomStatus');
+  gate.textContent = '?';
+  gate.className = 'gate';
+  status.textContent = 'checking bloom filter for a key that was never written...';
+  await sleep(400);
+  gate.textContent = '\u2715';
+  gate.className = 'gate blocked';
+  status.textContent = 'bloom filter says "definitely not here" \u2014 zero disk reads needed, for any number of segments.';
+}
+</script>
+</body>
+</html>
