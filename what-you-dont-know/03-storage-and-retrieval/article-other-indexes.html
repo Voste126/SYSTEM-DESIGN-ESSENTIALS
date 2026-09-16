@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Other indexing structures</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EEEDE6; --paper-2:#E6E4D8; --ink:#1D2321; --ink-soft:#4B4A42;
+  --muted:#8A8776; --line:#CFCCBC; --accent:#B9762B; --accent-dim:#D8C39A;
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--paper); color:var(--ink); font-family:'Source Serif 4', Georgia, serif; font-size:19px; line-height:1.65;}
+.mono{font-family:'IBM Plex Mono', monospace}
+.top-nav{max-width:640px; margin:0 auto; padding:1.5rem 24px 0; display:flex; gap:10px; flex-wrap:wrap;}
+.nav-btn{font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--ink-soft); text-decoration:none; padding:6px 12px; border:1px solid var(--line); border-radius:4px;}
+.nav-btn:hover{border-color:var(--accent); color:var(--accent);}
+.nav-btn.back{color:var(--accent); border-color:var(--accent-dim);}
+.page-pips{max-width:640px; margin:0.75rem auto 0; padding:0 24px; display:flex; gap:6px; font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--muted);}
+.page-pips span.on{color:var(--accent);}
+header{max-width:680px; margin:0 auto; padding:1.5rem 24px 2.5rem; border-bottom:1px solid var(--line);}
+header p.kicker{font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--accent); margin:0 0 1rem;}
+h1{font-size:32px; font-weight:600; margin:0 0 0.75rem;}
+header p.dek{font-size:18px; color:var(--ink-soft); margin:0; max-width:520px;}
+main{max-width:800px; margin:0 auto; padding:2.5rem 24px 5rem;}
+h3{font-size:24px; font-weight:600; margin:2rem 0 1rem;}
+p{margin:0 0 1rem; max-width:70ch;}
+section{padding-bottom:2rem; border-bottom:1px solid var(--line); margin-bottom:2rem;}
+.term{display:block; margin:0.75rem 0; padding:0.85rem 1rem; background:var(--paper-2); border-left:2px solid var(--accent-dim); font-size:16px; color:var(--ink-soft); max-width:70ch;}
+.term b{color:var(--ink); font-weight:600;}
+.panel{background:var(--paper-2); border:1px solid var(--line); border-radius:8px; padding:1.25rem; margin:1.25rem 0;}
+.playbtn{font-family:'IBM Plex Mono',monospace; font-size:13px; padding:7px 14px; border:1px solid var(--accent); color:var(--accent); background:none; border-radius:5px; cursor:pointer; margin-right:8px;}
+.playbtn:hover{background:var(--accent); color:var(--paper);}
+.status{font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--muted); margin-top:0.75rem;}
+.box{border:1px solid var(--ink); border-radius:6px; padding:8px 12px; font-family:'IBM Plex Mono',monospace; font-size:12px; transition:border-color .3s, background .3s, transform .4s, opacity .4s;}
+.box.active{border-color:var(--accent); background:var(--paper); border-width:2px;}
+.row{display:flex; align-items:center; gap:14px; margin:10px 0;}
+.grid-wrap{display:flex; justify-content:center; margin:1rem 0;}
+svg .band{transition:opacity .4s;}
+footer{max-width:680px; margin:0 auto; padding:3rem 24px 6rem; color:var(--muted); font-size:15px; border-top:1px solid var(--line);}
+</style>
+</head>
+<body>
+
+<nav class="top-nav">
+  <a href="../index.html" class="nav-btn back">&larr; what you don't know</a>
+  <a href="../../index.html" class="nav-btn">index</a>
+</nav>
+<div class="page-pips"><a href="article-btrees.html" style="color:inherit;text-decoration:none">page 1 · B-trees</a> · <a href="article-comparison.html" style="color:inherit;text-decoration:none">page 2 · comparison</a> · <span class="on">page 3 · other indexes</span></div>
+
+<header>
+  <p class="kicker">chapter 03, part 2 — page 3 of 3</p>
+  <h1>Beyond a single primary-key index</h1>
+  <p class="dek">Secondary indexes, where the actual row data lives, indexing more than one column at once, fuzzy search, and what changes when everything just lives in RAM.</p>
+</header>
+
+<main>
+
+<section>
+<h3>Heap file vs. clustered index</h3>
+<p>An index's value can point <i>at</i> a row stored elsewhere, or <i>be</i> the row itself. Watch what changes when multiple secondary indexes exist.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runHeap()">&#9654; heap file (indexes point to shared storage)</button>
+  <button class="playbtn" onclick="runClustered()">&#9654; clustered index (row lives inside the index)</button>
+  <div id="heapView" style="margin-top:1rem"></div>
+  <div class="status" id="heapStatus">Two secondary indexes, one row of actual data. Press a button.</div>
+</div>
+<div class="term"><b>The trade-off.</b> Heap files avoid duplicating the row across every index — cheap on storage, one extra hop on reads. Clustered indexes skip that hop for the primary lookup, at the cost of duplicating (or entirely owning) the row's data. A covering index is the middle ground: store just enough extra columns that some queries never touch the underlying table at all.</div>
+</section>
+
+<section>
+<h3>Why a 2D query breaks a normal index</h3>
+<p>"Find restaurants within this map rectangle" needs a range on <i>both</i> latitude and longitude simultaneously. A standard B-tree or LSM-tree index can only give you an efficient range on one dimension at a time.</p>
+<div class="panel">
+  <button class="playbtn" onclick="run2D()">&#9654; try a 2D query with a 1D index</button>
+  <svg width="100%" viewBox="0 0 300 220" style="max-width:360px">
+    <title>Why a single-dimension index can't answer a two-dimensional range query</title>
+    <rect x="20" y="20" width="260" height="180" fill="none" stroke="var(--line)"/>
+    <rect class="band" id="latBand" x="20" y="70" width="260" height="60" fill="var(--accent-dim)" opacity="0"/>
+    <rect class="band" id="lonBand" x="120" y="20" width="60" height="180" fill="var(--accent-dim)" opacity="0"/>
+    <rect id="targetBox" x="120" y="70" width="60" height="60" fill="none" stroke="var(--accent)" stroke-width="2" opacity="0"/>
+    <text x="150" y="15" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="IBM Plex Mono">map area (lat &times; lon)</text>
+  </svg>
+  <div class="status" id="query2dStatus">A latitude-only index gives you a horizontal band. A longitude-only index gives you a vertical band. Neither alone gives you the intersection.</div>
+</div>
+<div class="term"><b>The fix: R-trees</b> (used by PostGIS via PostgreSQL's generalized search tree), or translating 2D coordinates into one number via a space-filling curve and using an ordinary B-tree on that. The same idea generalizes past geography — a (date, temperature) index, or a (red, green, blue) color index, solves the identical structural problem.</div>
+</section>
+
+<section>
+<h3>The rest, briefly</h3>
+<div class="term"><b>Concatenated (multi-column) indexes</b> combine fields into one key by appending them, like a phone book indexed by (lastname, firstname) — great for "all Smiths" or "Smith, John," useless for "everyone named John."</div>
+<div class="term"><b>Fuzzy / full-text search</b> needs a different approach entirely: Lucene finds typo-tolerant matches by representing its term index as a finite-state automaton (like a trie) over characters, convertible into a Levenshtein automaton for efficient edit-distance search — not a sparse offset list like LevelDB uses.</div>
+<div class="term"><b>In-memory databases</b> (Redis, Memcached, VoltDB, RAMCloud) aren't fast primarily because they skip disk reads — a disk-based engine with enough RAM barely touches disk anyway, since the OS caches hot blocks. The real win is skipping the overhead of encoding data into a disk-writable format at all. Durability, when offered, comes from an on-disk change log, periodic snapshots, or replication — not from avoiding disk entirely.</div>
+</section>
+
+</main>
+
+<footer><p>Notes from Designing Data-Intensive Applications, ch. 3 — Martin Kleppmann. This closes out chapter 3.</p></footer>
+
+<script>
+async function runHeap(){
+  const el = document.getElementById('heapView');
+  const status = document.getElementById('heapStatus');
+  el.innerHTML = `
+    <div class="row"><div class="box" id="idx1">index: email</div><div class="box" id="idx2">index: city</div></div>
+    <div class="row"><div class="box" id="heapBox">heap file: {id:9, name:"Lucy", email:"...", city:"..."}</div></div>
+  `;
+  status.textContent = 'both indexes point at the same single copy of the row...';
+  await sleep(500);
+  document.getElementById('idx1').classList.add('active');
+  document.getElementById('idx2').classList.add('active');
+  await sleep(500);
+  document.getElementById('heapBox').classList.add('active');
+  status.textContent = 'one hop from either index into the shared heap file — no duplication, but always an extra read.';
+}
+async function runClustered(){
+  const el = document.getElementById('heapView');
+  const status = document.getElementById('heapStatus');
+  el.innerHTML = `
+    <div class="row"><div class="box active" id="cIdx">primary index (clustered): {id:9, name:"Lucy", email:"...", city:"..."} lives right here</div></div>
+    <div class="row"><div class="box" id="sIdx">secondary index: email &rarr; id 9</div></div>
+  `;
+  status.textContent = 'the row data lives directly inside the primary index — no heap file at all...';
+  await sleep(600);
+  document.getElementById('sIdx').classList.add('active');
+  status.textContent = 'a secondary index still has to reference the primary key, but the primary lookup itself skips the extra hop.';
+}
+async function run2D(){
+  const status = document.getElementById('query2dStatus');
+  document.getElementById('latBand').style.opacity='0';
+  document.getElementById('lonBand').style.opacity='0';
+  document.getElementById('targetBox').style.opacity='0';
+  status.textContent = 'a latitude index gives you this horizontal band...';
+  document.getElementById('latBand').style.opacity='1';
+  await sleep(900);
+  status.textContent = 'a longitude index gives you this vertical band...';
+  document.getElementById('lonBand').style.opacity='1';
+  await sleep(900);
+  status.textContent = 'neither index alone can give you just the overlap — you need a structure aware of both dimensions at once (an R-tree).';
+  document.getElementById('targetBox').style.opacity='1';
+}
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+</script>
+</body>
+</html>

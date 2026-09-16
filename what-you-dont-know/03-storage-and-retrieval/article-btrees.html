@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>B-trees — how the most common index works</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EEEDE6; --paper-2:#E6E4D8; --ink:#1D2321; --ink-soft:#4B4A42;
+  --muted:#8A8776; --line:#CFCCBC; --accent:#B9762B; --accent-dim:#D8C39A;
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--paper); color:var(--ink); font-family:'Source Serif 4', Georgia, serif; font-size:19px; line-height:1.65;}
+.mono{font-family:'IBM Plex Mono', monospace}
+.top-nav{max-width:640px; margin:0 auto; padding:1.5rem 24px 0; display:flex; gap:10px; flex-wrap:wrap;}
+.nav-btn{font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--ink-soft); text-decoration:none; padding:6px 12px; border:1px solid var(--line); border-radius:4px;}
+.nav-btn:hover{border-color:var(--accent); color:var(--accent);}
+.nav-btn.back{color:var(--accent); border-color:var(--accent-dim);}
+.page-pips{max-width:640px; margin:0.75rem auto 0; padding:0 24px; display:flex; gap:6px; font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--muted);}
+.page-pips span.on{color:var(--accent);}
+header{max-width:680px; margin:0 auto; padding:1.5rem 24px 2.5rem; border-bottom:1px solid var(--line);}
+header p.kicker{font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--accent); margin:0 0 1rem;}
+h1{font-size:32px; font-weight:600; margin:0 0 0.75rem;}
+header p.dek{font-size:18px; color:var(--ink-soft); margin:0; max-width:520px;}
+main{max-width:800px; margin:0 auto; padding:2.5rem 24px 5rem;}
+h3{font-size:24px; font-weight:600; margin:2rem 0 1rem;}
+p{margin:0 0 1rem; max-width:70ch;}
+section{padding-bottom:2rem; border-bottom:1px solid var(--line); margin-bottom:2rem;}
+.term{display:block; margin:0.75rem 0; padding:0.85rem 1rem; background:var(--paper-2); border-left:2px solid var(--accent-dim); font-size:16px; color:var(--ink-soft); max-width:70ch;}
+.term b{color:var(--ink); font-weight:600;}
+.panel{background:var(--paper-2); border:1px solid var(--line); border-radius:8px; padding:1.25rem; margin:1.25rem 0;}
+.playbtn{font-family:'IBM Plex Mono',monospace; font-size:13px; padding:7px 14px; border:1px solid var(--accent); color:var(--accent); background:none; border-radius:5px; cursor:pointer; margin-right:8px;}
+.playbtn:hover{background:var(--accent); color:var(--paper);}
+.status{font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--muted); margin-top:0.75rem;}
+.page-box{border:1px solid var(--ink); border-radius:6px; padding:8px 10px; font-family:'IBM Plex Mono',monospace; font-size:11px; text-align:center; transition:border-color .3s, background .3s, opacity .4s;}
+.page-box.active{border-color:var(--accent); background:var(--paper); border-width:2px;}
+.tree-row{display:flex; justify-content:center; gap:16px; margin:14px 0;}
+footer{max-width:680px; margin:0 auto; padding:3rem 24px 6rem; color:var(--muted); font-size:15px; border-top:1px solid var(--line);}
+</style>
+</head>
+<body>
+
+<nav class="top-nav">
+  <a href="../index.html" class="nav-btn back">&larr; what you don't know</a>
+  <a href="../../index.html" class="nav-btn">index</a>
+  <a href="article.html" class="nav-btn">part 1 (hash indexes/LSM)</a>
+</nav>
+<div class="page-pips"><span class="on">page 1 · B-trees</span> · <a href="article-comparison.html" style="color:inherit;text-decoration:none">page 2 · comparison</a> · <a href="article-other-indexes.html" style="color:inherit;text-decoration:none">page 3 · other indexes</a></div>
+
+<header>
+  <p class="kicker">chapter 03, part 2 — page 1 of 3</p>
+  <h1>B-trees: the most common index of all</h1>
+  <p class="dek">Everything in part 1 was append-only. B-trees do the opposite — they overwrite fixed-size pages in place — and they're the default in almost every relational database. Press play to watch a lookup, then a page split, actually happen.</p>
+</header>
+
+<main>
+
+<section>
+<h3>How a lookup actually traverses the tree</h3>
+<p>Start at the root. Each page holds keys that mark boundaries and references to child pages responsible for the range between those boundaries. Follow the right reference at each level until you reach a leaf page holding the actual value.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runLookup()">&#9654; look up key 251</button>
+  <div id="treeView"></div>
+  <div class="status" id="treeStatus">Root page first, then narrow down one level at a time.</div>
+</div>
+<div class="term"><b>Why this stays fast at any scale.</b> With a branching factor in the hundreds, tree depth grows as O(log n) — a four-level tree of 4KB pages with a branching factor of 500 can hold up to 256 TB, and a lookup still only touches four pages.</div>
+</section>
+
+<section>
+<h3>Growing the tree: what a page split looks like</h3>
+<p>Updating an existing key just overwrites its leaf page in place — cheap, and every reference to that page stays valid. Inserting a new key is more involved if the target page is already full: it splits into two half-full pages, and the parent gets updated to reflect the new boundary.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runSplit()">&#9654; insert a key that overflows a full page</button>
+  <div id="splitView"></div>
+  <div class="status" id="splitStatus">A full leaf page, about to receive one more key than it can hold.</div>
+</div>
+<div class="term"><b>Why this is dangerous without a write-ahead log.</b> A split touches multiple pages at once — the two new half-pages, and the parent's references. A crash partway through leaves an orphaned page nothing points to. That's exactly why B-tree implementations log every change to a WAL before ever touching the real pages.</div>
+</section>
+
+<section>
+<h3>Reliability and optimizations, in short</h3>
+<p>Every B-tree write is really a write-ahead-log entry <i>plus</i> the actual page overwrite — that double-write is the seed of "write amplification," covered in more depth on the next page. Concurrent access needs latches (lightweight locks) protecting the tree's shared structure, since — unlike log-structured merging — updates happen in place, in the foreground, where other threads can see a tree mid-change.</p>
+<div class="term"><b>Optimizations worth knowing:</b> copy-on-write (write a modified page to a new location instead of overwriting, used by LMDB — sidesteps the WAL entirely); abbreviated keys in interior pages to raise the branching factor; keeping leaf pages roughly sequential on disk for faster range scans; sibling pointers between leaf pages so range scans don't need to climb back to the parent; and fractal trees, a variant borrowing log-structured ideas to cut disk seeks.</div>
+</section>
+
+</main>
+
+<footer><p>Notes from Designing Data-Intensive Applications, ch. 3 — Martin Kleppmann. Continue to page 2 for the direct B-tree vs. LSM-tree comparison.</p></footer>
+
+<script>
+async function runLookup(){
+  const view = document.getElementById('treeView');
+  const status = document.getElementById('treeStatus');
+  view.innerHTML = `
+    <div class="tree-row"><div class="page-box" id="p0">root: 100 | 200 | 300 | 400 | 500</div></div>
+    <div class="tree-row"><div class="page-box" id="p1">100-200</div><div class="page-box" id="p2">200-300</div><div class="page-box" id="p3">300-400</div></div>
+    <div class="tree-row"><div class="page-box" id="p4">leaf: 245, 250, 251, 260</div></div>
+  `;
+  status.textContent = 'checking root page for key 251...';
+  document.getElementById('p0').classList.add('active');
+  await sleep(500);
+  status.textContent = '251 falls between 200 and 300 — following that reference.';
+  document.getElementById('p0').classList.remove('active');
+  document.getElementById('p2').classList.add('active');
+  await sleep(500);
+  status.textContent = 'that page points to the leaf holding 245-260 — one more hop.';
+  document.getElementById('p2').classList.remove('active');
+  document.getElementById('p4').classList.add('active');
+  await sleep(500);
+  status.textContent = 'found 251 — three page reads total, regardless of how many millions of keys exist.';
+}
+async function runSplit(){
+  const view = document.getElementById('splitView');
+  const status = document.getElementById('splitStatus');
+  view.innerHTML = `<div class="tree-row"><div class="page-box active" id="fullPage">leaf (full): 10,20,30,40 — inserting 25</div></div>`;
+  await sleep(700);
+  status.textContent = 'page is full — splitting into two half-full pages...';
+  view.innerHTML = `<div class="tree-row"><div class="page-box active" id="leftHalf">leaf: 10, 20, 25</div><div class="page-box active" id="rightHalf">leaf: 30, 40</div></div>`;
+  await sleep(700);
+  status.textContent = 'now updating the parent page to add a reference to the new split...';
+  view.innerHTML += `<div class="tree-row" style="margin-top:10px"><div class="page-box" id="parentUpdate">parent: ...25 | 30...  (new boundary added)</div></div>`;
+  await sleep(300);
+  document.getElementById('parentUpdate').classList.add('active');
+  status.textContent = 'done — tree stays balanced. this three-page write is exactly what a crash mid-way would corrupt without a WAL.';
+}
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+</script>
+</body>
+</html>

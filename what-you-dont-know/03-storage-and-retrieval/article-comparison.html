@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comparing B-trees and LSM-trees</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EEEDE6; --paper-2:#E6E4D8; --ink:#1D2321; --ink-soft:#4B4A42;
+  --muted:#8A8776; --line:#CFCCBC; --accent:#B9762B; --accent-dim:#D8C39A;
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--paper); color:var(--ink); font-family:'Source Serif 4', Georgia, serif; font-size:19px; line-height:1.65;}
+.mono{font-family:'IBM Plex Mono', monospace}
+.top-nav{max-width:640px; margin:0 auto; padding:1.5rem 24px 0; display:flex; gap:10px; flex-wrap:wrap;}
+.nav-btn{font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--ink-soft); text-decoration:none; padding:6px 12px; border:1px solid var(--line); border-radius:4px;}
+.nav-btn:hover{border-color:var(--accent); color:var(--accent);}
+.nav-btn.back{color:var(--accent); border-color:var(--accent-dim);}
+.page-pips{max-width:640px; margin:0.75rem auto 0; padding:0 24px; display:flex; gap:6px; font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--muted);}
+.page-pips span.on{color:var(--accent);}
+header{max-width:680px; margin:0 auto; padding:1.5rem 24px 2.5rem; border-bottom:1px solid var(--line);}
+header p.kicker{font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--accent); margin:0 0 1rem;}
+h1{font-size:32px; font-weight:600; margin:0 0 0.75rem;}
+header p.dek{font-size:18px; color:var(--ink-soft); margin:0; max-width:520px;}
+main{max-width:800px; margin:0 auto; padding:2.5rem 24px 5rem;}
+h3{font-size:24px; font-weight:600; margin:2rem 0 1rem;}
+p{margin:0 0 1rem; max-width:70ch;}
+section{padding-bottom:2rem; border-bottom:1px solid var(--line); margin-bottom:2rem;}
+.term{display:block; margin:0.75rem 0; padding:0.85rem 1rem; background:var(--paper-2); border-left:2px solid var(--accent-dim); font-size:16px; color:var(--ink-soft); max-width:70ch;}
+.term b{color:var(--ink); font-weight:600;}
+.panel{background:var(--paper-2); border:1px solid var(--line); border-radius:8px; padding:1.25rem; margin:1.25rem 0;}
+.playbtn{font-family:'IBM Plex Mono',monospace; font-size:13px; padding:7px 14px; border:1px solid var(--accent); color:var(--accent); background:none; border-radius:5px; cursor:pointer; margin-right:8px;}
+.playbtn:hover{background:var(--accent); color:var(--paper);}
+.status{font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--muted); margin-top:0.75rem;}
+.bar-row{display:flex; align-items:center; gap:10px; margin:8px 0; font-family:'IBM Plex Mono',monospace; font-size:12px;}
+.bar-label{width:120px; flex-shrink:0;}
+.bar-track{flex:1; background:var(--paper); border:1px solid var(--line); border-radius:4px; height:20px; overflow:hidden;}
+.bar-fill{height:100%; background:var(--accent); width:0%; transition:width 1s ease;}
+.bar-fill.btree{background:var(--ink-soft);}
+table.ref{border-collapse:collapse; font-size:15px; margin:1rem 0 1.5rem; width:100%; max-width:70ch;}
+table.ref th, table.ref td{border-bottom:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top;}
+table.ref th{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); font-weight:500;}
+table.ref td.mono{font-family:'IBM Plex Mono',monospace; font-size:13.5px;}
+footer{max-width:680px; margin:0 auto; padding:3rem 24px 6rem; color:var(--muted); font-size:15px; border-top:1px solid var(--line);}
+</style>
+</head>
+<body>
+
+<nav class="top-nav">
+  <a href="../index.html" class="nav-btn back">&larr; what you don't know</a>
+  <a href="../../index.html" class="nav-btn">index</a>
+</nav>
+<div class="page-pips"><a href="article-btrees.html" style="color:inherit;text-decoration:none">page 1 · B-trees</a> · <span class="on">page 2 · comparison</span> · <a href="article-other-indexes.html" style="color:inherit;text-decoration:none">page 3 · other indexes</a></div>
+
+<header>
+  <p class="kicker">chapter 03, part 2 — page 2 of 3</p>
+  <h1>Comparing B-trees and LSM-trees</h1>
+  <p class="dek">Rule of thumb: LSM-trees win on writes, B-trees win on reads — but "write amplification" is the actual mechanism behind that rule, and it's worth seeing rather than just accepting.</p>
+</header>
+
+<main>
+
+<section>
+<h3>Write amplification, animated</h3>
+<p>A B-tree writes every change at least twice — once to the write-ahead log, once to the actual page (sometimes twice, to guard against a partially-written page surviving a power failure). LSM-trees rewrite data too, just through repeated compaction. Press play to watch one logical write turn into several physical ones, for both.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runAmplify()">&#9654; simulate one logical write</button>
+  <div class="bar-row"><div class="bar-label">B-tree writes</div><div class="bar-track"><div class="bar-fill btree" id="btreeBar"></div></div><span class="mono" id="btreeCount">0x</span></div>
+  <div class="bar-row"><div class="bar-label">LSM-tree writes</div><div class="bar-track"><div class="bar-fill" id="lsmBar"></div></div><span class="mono" id="lsmCount">0x</span></div>
+  <div class="status" id="ampStatus">One record update — watch how many physical disk writes it actually causes over time.</div>
+</div>
+<div class="term"><b>Why this matters beyond disk space.</b> Write amplification is especially costly on SSDs, which can only survive a limited number of block overwrites before wearing out — so it's a durability concern, not just a performance one.</div>
+</section>
+
+<section>
+<h3>The full comparison</h3>
+<table class="ref">
+<tr><th></th><th>B-trees</th><th>LSM-trees</th></tr>
+<tr><td class="mono">on-disk layout</td><td>fixed-size pages, overwritten in place</td><td>variable-size segments, append-only</td></tr>
+<tr><td class="mono">typical strength</td><td>reads</td><td>writes</td></tr>
+<tr><td class="mono">crash safety</td><td>write-ahead log (WAL)</td><td>memtable needs its own WAL; segments themselves need none</td></tr>
+<tr><td class="mono">concurrency</td><td>latches on shared structure</td><td>simpler — background merges don't block queries</td></tr>
+<tr><td class="mono">key uniqueness</td><td>exactly one copy per key</td><td>possibly several copies until compacted</td></tr>
+<tr><td class="mono">compaction cost</td><td>n/a</td><td>can compete with live reads/writes for disk bandwidth</td></tr>
+<tr><td class="mono">tail latency</td><td>more predictable</td><td>can spike during compaction</td></tr>
+<tr><td class="mono">strong transactional locking</td><td>locks attach directly to tree</td><td>harder — one key, multiple locations</td></tr>
+</table>
+<div class="term"><b>The honest bottom line:</b> B-trees are deeply entrenched and reliable across many workloads; LSM-trees are gaining ground, especially in newer datastores. There's no universal winner — this needs testing against your actual workload, not a rule of thumb applied blindly.</div>
+</section>
+
+</main>
+
+<footer><p>Notes from Designing Data-Intensive Applications, ch. 3 — Martin Kleppmann. Continue to page 3 for secondary indexes, multi-dimensional indexes, and in-memory databases.</p></footer>
+
+<script>
+async function runAmplify(){
+  const status = document.getElementById('ampStatus');
+  const bBar = document.getElementById('btreeBar'), bCount = document.getElementById('btreeCount');
+  const lBar = document.getElementById('lsmBar'), lCount = document.getElementById('lsmCount');
+  bBar.style.width='0%'; lBar.style.width='0%'; bCount.textContent='0x'; lCount.textContent='0x';
+  await sleep(300);
+  status.textContent = 'B-tree: write to WAL...';
+  bBar.style.width='33%'; bCount.textContent='1x (WAL)';
+  status.textContent = 'LSM-tree: write to memtable\'s log...';
+  lBar.style.width='25%'; lCount.textContent='1x (log)';
+  await sleep(900);
+  status.textContent = 'B-tree: now overwrite the actual page...';
+  bBar.style.width='66%'; bCount.textContent='2x (WAL + page)';
+  await sleep(900);
+  status.textContent = 'LSM-tree: memtable flushes to a new SSTable...';
+  lBar.style.width='50%'; lCount.textContent='2x (log + flush)';
+  await sleep(900);
+  status.textContent = 'B-tree: a nearby page split forces a parent update too...';
+  bBar.style.width='100%'; bCount.textContent='3x (WAL + page + parent)';
+  await sleep(900);
+  status.textContent = 'LSM-tree: background compaction rewrites this record again as segments merge...';
+  lBar.style.width='85%'; lCount.textContent='3-4x (ongoing compaction)';
+  await sleep(700);
+  status.textContent = 'both amplify writes, through different mechanisms — B-trees mostly up front, LSM-trees spread out over the compaction schedule.';
+}
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+</script>
+</body>
+</html>
