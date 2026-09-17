@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Column-oriented storage, from zero</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EEEDE6; --paper-2:#E6E4D8; --ink:#1D2321; --ink-soft:#4B4A42;
+  --muted:#8A8776; --line:#CFCCBC; --accent:#B9762B; --accent-dim:#D8C39A;
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--paper); color:var(--ink); font-family:'Source Serif 4', Georgia, serif; font-size:19px; line-height:1.65;}
+.mono{font-family:'IBM Plex Mono', monospace}
+.top-nav{max-width:640px; margin:0 auto; padding:1.5rem 24px 0; display:flex; gap:10px; flex-wrap:wrap;}
+.nav-btn{font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--ink-soft); text-decoration:none; padding:6px 12px; border:1px solid var(--line); border-radius:4px;}
+.nav-btn:hover{border-color:var(--accent); color:var(--accent);}
+.nav-btn.back{color:var(--accent); border-color:var(--accent-dim);}
+.page-pips{max-width:640px; margin:0.75rem auto 0; padding:0 24px; display:flex; gap:6px; flex-wrap:wrap; font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--muted);}
+.page-pips span.on{color:var(--accent);} .page-pips a{color:inherit; text-decoration:none;}
+header{max-width:680px; margin:0 auto; padding:1.5rem 24px 2.5rem; border-bottom:1px solid var(--line);}
+header p.kicker{font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--accent); margin:0 0 1rem;}
+h1{font-size:32px; font-weight:600; margin:0 0 0.75rem;}
+header p.dek{font-size:18px; color:var(--ink-soft); margin:0; max-width:520px;}
+main{max-width:820px; margin:0 auto; padding:2.5rem 24px 5rem;}
+h3{font-size:24px; font-weight:600; margin:2rem 0 1rem;}
+.step-tag{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--accent); margin:2rem 0 0.25rem;}
+p{margin:0 0 1rem; max-width:70ch;}
+section{padding-bottom:2rem; border-bottom:1px solid var(--line); margin-bottom:2rem;}
+.term{display:block; margin:0.75rem 0; padding:0.85rem 1rem; background:var(--paper-2); border-left:2px solid var(--accent-dim); font-size:16px; color:var(--ink-soft); max-width:70ch;}
+.term b{color:var(--ink); font-weight:600;}
+.panel{background:var(--paper-2); border:1px solid var(--line); border-radius:8px; padding:1.25rem; margin:1.25rem 0;}
+.playbtn{font-family:'IBM Plex Mono',monospace; font-size:13px; padding:7px 14px; border:1px solid var(--accent); color:var(--accent); background:none; border-radius:5px; cursor:pointer; margin-right:8px; margin-bottom:6px;}
+.playbtn:hover{background:var(--accent); color:var(--paper);}
+.status{font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--muted); margin-top:0.75rem;}
+.grid-table{display:grid; font-family:'IBM Plex Mono',monospace; font-size:11px; margin-top:0.75rem; gap:2px;}
+.cell{border:1px solid var(--line); padding:4px 6px; background:var(--paper); transition:background .3s, opacity .3s;}
+.cell.head{font-weight:600; color:var(--muted); border:none; background:none;}
+.cell.hit{background:var(--accent-dim);}
+.cell.dim{opacity:0.2;}
+.bitrow{display:flex; gap:2px; font-family:'IBM Plex Mono',monospace; font-size:11px; margin:4px 0; align-items:center;}
+.bit{width:16px; height:16px; border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:9px; transition:background .2s;}
+.bit.one{background:var(--accent-dim);}
+.bit.result{background:var(--accent); color:var(--paper);}
+.bitlabel{width:90px; flex-shrink:0; color:var(--muted);}
+.cube{display:grid; grid-template-columns:repeat(4,50px); gap:3px; font-family:'IBM Plex Mono',monospace; font-size:10px; margin-top:0.75rem;}
+.cube div{border:1px solid var(--line); padding:6px; text-align:center; background:var(--paper); transition:background .3s;}
+.cube div.total{background:var(--accent-dim); font-weight:600;}
+footer{max-width:680px; margin:0 auto; padding:3rem 24px 6rem; color:var(--muted); font-size:15px; border-top:1px solid var(--line);}
+</style>
+</head>
+<body>
+
+<nav class="top-nav">
+  <a href="../index.html" class="nav-btn back">&larr; what you don't know</a>
+  <a href="../../index.html" class="nav-btn">index</a>
+</nav>
+<div class="page-pips">
+  <a href="article-btrees.html">page 1 · B-trees</a> · <a href="article-comparison.html">page 2 · comparison</a> · <a href="article-other-indexes.html">page 3 · other indexes</a> ·
+  <a href="article-oltp-olap.html">page 4 · data warehouse</a> · <span class="on">page 5 · column storage</span>
+</div>
+
+<header>
+  <p class="kicker">chapter 03, part 3 — page 5 of 5 — built from zero</p>
+  <h1>Column-oriented storage</h1>
+  <p class="dek">If you've never met this idea before, start at step 0 and don't skip ahead — each step only makes sense once the one before it has landed.</p>
+</header>
+
+<main>
+
+<section>
+<p class="step-tag">step 0 — the problem</p>
+<h3>A 100-column table, a 3-column question</h3>
+<p>A warehouse fact table can easily have 100+ columns. A typical analytics question — "how much fruit and candy sold, by day of week, in 2013" — only actually needs three of them: the date, the product category, and the quantity. Every other column is dead weight for this one question.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runWideTable()">&#9654; highlight what this query actually needs</button>
+  <div class="grid-table" id="wideTable" style="grid-template-columns:repeat(7,1fr)"></div>
+  <div class="status" id="wideStatus">A fact table with 7 sample columns (real ones have 100+). Press play.</div>
+</div>
+</section>
+
+<section>
+<p class="step-tag">step 1 — why row storage is the wrong shape here</p>
+<h3>Row-oriented vs. column-oriented reads</h3>
+<p>Row storage keeps one row's values physically together — perfect for "fetch this whole order," wasteful for "read three columns across a million rows." Column storage keeps one column's values together instead.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runRowRead()">&#9654; row-oriented: read for our query</button>
+  <button class="playbtn" onclick="runColRead()">&#9654; column-oriented: read for our query</button>
+  <div id="readCompareView" style="margin-top:0.5rem"></div>
+  <div class="status" id="readStatus">Same query, same data — watch what actually gets pulled off disk.</div>
+</div>
+</section>
+
+<section>
+<p class="step-tag">step 2 — how columns compress: bitmap encoding</p>
+<h3>Turning a column into bitwise-AND/OR-able bitmaps</h3>
+<p>Few distinct values, many rows — exactly the shape that compresses well. One bitmap per distinct value; a 1 marks which rows have it.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runBitmap()">&#9654; build bitmaps + run a query</button>
+  <div id="bitmapView" style="margin-top:0.5rem"></div>
+  <div class="status" id="bitmapStatus">Column of product IDs across 12 rows. Press play.</div>
+</div>
+<div class="term"><b>Why this is fast, not just compact.</b> "product IN (30, 68)" becomes a bitwise OR of two bitmaps. "product = 31 AND store = 3" becomes a bitwise AND of two bitmaps — cheap CPU operations, correct only because every column's bitmap lines up row-for-row.</div>
+</section>
+
+<section>
+<p class="step-tag">step 3 — sort order multiplies the compression</p>
+<h3>The same column, before and after sorting</h3>
+<p>You can't sort each column independently — you'd lose which values belong to the same row. Sort whole rows together, by a chosen key, and low-cardinality columns end up with long unbroken runs that compress dramatically further.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runSortCompress()">&#9654; sort by date, watch the run-lengths form</button>
+  <div id="sortView" style="margin-top:0.5rem"></div>
+  <div class="status" id="sortStatus">An unsorted date column, about to be sorted.</div>
+</div>
+</section>
+
+<section>
+<p class="step-tag">step 4 — writes are the trade-off</p>
+<h3>Why this makes writing harder (and the fix)</h3>
+<p>You can't update a compressed, sorted column file in place — inserting one row could mean rewriting entire files. The fix is the same LSM-tree idea from earlier in this chapter: buffer writes in memory, merge them into the on-disk column files in bulk later. Queries transparently check both.</p>
+</section>
+
+<section>
+<p class="step-tag">step 5 — pre-computing the aggregate itself</p>
+<h3>Data cubes: caching the answer, not just the data</h3>
+<p>If "total sales by date and product" gets asked constantly, why recompute it every time? A data cube precomputes every date-product combination once.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runCube()">&#9654; build a 2D data cube</button>
+  <div id="cubeView"></div>
+  <div class="status" id="cubeStatus">Two dimensions: date (rows) and product (columns). Press play.</div>
+</div>
+<div class="term"><b>The catch.</b> This is blazingly fast for exactly the dimensions it was built with — but if "price bracket" was never one of the cube's dimensions, no amount of slicing the existing cube can answer "what fraction of sales was over $100." That's why warehouses keep the raw fact table too, and treat cubes as a targeted boost, not a replacement.</div>
+</section>
+
+</main>
+
+<footer><p>Notes from Designing Data-Intensive Applications, ch. 3 — Martin Kleppmann. This closes out chapter 3 across all five pages.</p></footer>
+
+<script>
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+// Step 0
+const cols = ['date','product_sk','store_sk','quantity','price','tax','employee_id'];
+const needed = ['date','product_sk','quantity'];
+async function runWideTable(){
+  const el = document.getElementById('wideTable');
+  el.innerHTML = cols.map(c=>`<div class="cell head">${c}</div>`).join('') +
+    cols.map(c=>`<div class="cell" id="wc-${c}">...</div>`).join('');
+  const status = document.getElementById('wideStatus');
+  status.textContent = 'this query only needs 3 of 7 columns...';
+  await sleep(500);
+  cols.forEach(c=>{
+    const el2 = document.getElementById('wc-'+c);
+    if(needed.includes(c)) el2.classList.add('hit'); else el2.classList.add('dim');
+  });
+  status.textContent = '3 columns matter, 4 are dead weight for this question — and real fact tables have 100+.';
+}
+
+// Step 1
+async function runRowRead(){
+  const el = document.getElementById('readCompareView');
+  const status = document.getElementById('readStatus');
+  el.innerHTML = `<div class="grid-table" id="rowGrid" style="grid-template-columns:repeat(7,1fr)"></div>`;
+  const grid = document.getElementById('rowGrid');
+  grid.innerHTML = cols.map(c=>`<div class="cell head">${c}</div>`).join('');
+  for(let r=0;r<3;r++){
+    grid.innerHTML += cols.map(c=>`<div class="cell" id="row${r}-${c}">v</div>`).join('');
+  }
+  status.textContent = 'row-oriented: loading entire rows, all 7 columns each, then discarding 4 of them...';
+  for(let r=0;r<3;r++){
+    for(const c of cols){ document.getElementById(`row${r}-${c}`).classList.add(needed.includes(c)?'hit':'dim'); await sleep(60); }
+  }
+  status.textContent = 'every column got pulled off disk for every row, even the ones we throw away.';
+}
+async function runColRead(){
+  const el = document.getElementById('readCompareView');
+  const status = document.getElementById('readStatus');
+  el.innerHTML = `<div class="row" style="display:flex;gap:8px;flex-wrap:wrap">${cols.map(c=>`<div class="cell" id="colf-${c}" style="min-width:70px">${c}.col</div>`).join('')}</div>`;
+  status.textContent = 'column-oriented: only opening the 3 files this query actually needs...';
+  await sleep(500);
+  cols.forEach(c=>{
+    document.getElementById('colf-'+c).classList.add(needed.includes(c)?'hit':'dim');
+  });
+  status.textContent = 'the other 4 column files are never even opened. same query, far less disk I/O.';
+}
+
+// Step 2 - bitmap
+async function runBitmap(){
+  const el = document.getElementById('bitmapView');
+  const status = document.getElementById('bitmapStatus');
+  const productCol = [30,68,99,30,31,68,30,99,68,31,30,68];
+  const values = [30,68,99,31];
+  el.innerHTML = values.map(v=>`<div class="bitrow"><span class="bitlabel">product=${v}</span>${productCol.map((x,i)=>`<div class="bit" id="b${v}-${i}">${x===v?1:0}</div>`).join('')}</div>`).join('') +
+    `<div class="bitrow" style="margin-top:8px"><span class="bitlabel">OR (30,68)</span>${productCol.map((x,i)=>`<div class="bit" id="or-${i}"></div>`).join('')}</div>`;
+  status.textContent = 'four bitmaps built, one per distinct product...';
+  values.forEach(v=>productCol.forEach((x,i)=>{ if(x===v) document.getElementById(`b${v}-${i}`).classList.add('one'); }));
+  await sleep(700);
+  status.textContent = 'query: product IN (30, 68) — computing bitwise OR of those two bitmaps...';
+  for(let i=0;i<productCol.length;i++){
+    if(productCol[i]===30 || productCol[i]===68){
+      document.getElementById('or-'+i).textContent='1';
+      document.getElementById('or-'+i).classList.add('result');
+    } else {
+      document.getElementById('or-'+i).textContent='0';
+    }
+    await sleep(80);
+  }
+  status.textContent = 'done — the OR bitmap directly marks every matching row, no scanning required.';
+}
+
+// Step 3 - sort compression
+async function runSortCompress(){
+  const el = document.getElementById('sortView');
+  const status = document.getElementById('sortStatus');
+  const unsorted = ['3/2','1/2','2/2','1/2','3/2','2/2','1/2','3/2'];
+  const sorted = ['1/2','1/2','1/2','2/2','2/2','3/2','3/2','3/2'];
+  el.innerHTML = `<div class="bitrow"><span class="bitlabel">unsorted</span>${unsorted.map(v=>`<div class="bit" style="width:36px">${v}</div>`).join('')}</div>
+                  <div class="bitrow" id="sortedRow" style="margin-top:6px; opacity:0.3"><span class="bitlabel">sorted</span>${sorted.map((v,i)=>`<div class="bit" id="s${i}" style="width:36px">${v}</div>`).join('')}</div>`;
+  status.textContent = 'unsorted: dates jump around, no repeated runs to compress...';
+  await sleep(700);
+  document.getElementById('sortedRow').style.opacity='1';
+  status.textContent = 'sorted: three long unbroken runs now — run-length encoding crushes this to almost nothing.';
+  for(let i=0;i<sorted.length;i++){ document.getElementById('s'+i).classList.add('hit'); await sleep(90); }
+}
+
+// Step 5 - data cube
+async function runCube(){
+  const el = document.getElementById('cubeView');
+  const status = document.getElementById('cubeStatus');
+  const dates = ['Mon','Tue','Wed'];
+  const products = ['fruit','candy','soda'];
+  const data = {'Mon-fruit':12,'Mon-candy':4,'Mon-soda':7,'Tue-fruit':9,'Tue-candy':6,'Tue-soda':5,'Wed-fruit':14,'Wed-candy':3,'Wed-soda':8};
+  let html = `<div class="cube"><div></div>${products.map(p=>`<div>${p}</div>`).join('')}<div>total</div>`;
+  dates.forEach(d=>{
+    html += `<div>${d}</div>`;
+    products.forEach(p=>{ html += `<div id="c-${d}-${p}">?</div>`; });
+    html += `<div id="c-${d}-total">?</div>`;
+  });
+  html += `<div>total</div>`;
+  products.forEach(p=>{ html += `<div id="c-total-${p}">?</div>`; });
+  html += `<div id="c-total-total">?</div></div>`;
+  el.innerHTML = html;
+  status.textContent = 'filling in each date-product cell from raw sales data...';
+  for(const d of dates){
+    let rowTotal=0;
+    for(const p of products){
+      const v = data[`${d}-${p}`];
+      document.getElementById(`c-${d}-${p}`).textContent = v;
+      rowTotal += v;
+      await sleep(150);
+    }
+    document.getElementById(`c-${d}-total`).textContent = rowTotal;
+    document.getElementById(`c-${d}-total`).classList.add('total');
+  }
+  status.textContent = 'now collapsing by product, ignoring date...';
+  await sleep(400);
+  for(const p of products){
+    let colTotal=0;
+    dates.forEach(d=>colTotal+=data[`${d}-${p}`]);
+    document.getElementById(`c-total-${p}`).textContent = colTotal;
+    document.getElementById(`c-total-${p}`).classList.add('total');
+    await sleep(150);
+  }
+  const grand = Object.values(data).reduce((a,b)=>a+b,0);
+  document.getElementById('c-total-total').textContent = grand;
+  document.getElementById('c-total-total').classList.add('total');
+  status.textContent = '"total sales per store yesterday"-style queries are now a single cell lookup, not a scan.';
+}
+</script>
+</body>
+</html>

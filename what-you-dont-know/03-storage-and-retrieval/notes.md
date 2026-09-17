@@ -282,3 +282,114 @@ In-memory databases also unlock data models that are awkward to build on top of 
 - Is the "B-trees for reads, LSM-trees for writes" rule of thumb still broadly true today, or has it shifted as SSDs (with their own internal log-structured firmware) have become the default storage medium?
 
 
+
+---
+
+# Part 3 — OLTP vs. OLAP, data warehousing, and column-oriented storage
+(Continuing the same chapter 3 notes. This part is deliberately split into two clearly separate topics, as requested: data warehousing first, column-oriented storage second, with the second one built up from zero for someone meeting it for the first time.)
+
+## Topic A: Transaction processing vs. analytics — read this first (the simple one)
+
+Every database access pattern falls roughly into one of two shapes:
+
+- **OLTP (online transaction processing)**: the pattern behind almost every user-facing app. Look up a *small* number of records by key ("this user's profile," "this order"), read or write them, done. High volume of requests, each one touching very little data. Disk *seek time* is usually the bottleneck.
+- **OLAP (online analytic processing)**: the pattern behind business reporting and dashboards. Scan a *huge* number of records, but only a handful of columns per record, and boil it all down into an aggregate (a sum, an average, a count). Low volume of queries, but each one is enormous. Disk *bandwidth*, not seek time, is usually the bottleneck.
+
+**Why they ended up on separate databases entirely**: an OLTP database has to stay fast and available for real users — a business analyst running a sprawling ad hoc query against it would scan huge chunks of data and could visibly slow down real customer transactions happening at the same time. The fix that emerged: copy the data out into a completely separate, read-only database built specifically for heavy scanning — a **data warehouse** — so analysts can query however they like without ever touching the live system.
+
+### Getting data into the warehouse: ETL
+
+Data warehouses don't invent new data — they copy it in from every OLTP system in the business (the customer website, point-of-sale systems, inventory tracking, supplier management, and so on), each of which typically operates as its own independent, autonomously-run system. That copying process is called **Extract–Transform–Load (ETL)**: pull data out of each source system, reshape it into a schema suited for analysis and clean it up, then load it into the warehouse. It's why data warehouses are common in large enterprises (many separate OLTP systems worth consolidating) and nearly nonexistent in small companies (one small database is often small enough to just query directly, or even analyze in a spreadsheet).
+
+### Star schemas — the standard shape of warehouse data
+
+Unlike OLTP, where data models vary a lot by application, warehouse schemas converge on one dominant pattern: the **star schema**. At the center is a **fact table**, where each row represents one event — a single purchase, a single page view, a single click — at a specific point in time. Some columns in the fact table are plain attributes (the sale price, say); others are foreign keys pointing out to **dimension tables**, which describe the *who, what, where, when, how, why* of that event (which product, which store, which customer, which date). Drawn out, the fact table sits in the middle with dimension tables radiating outward like the points of a star — hence the name.
+
+A **snowflake schema** is the same idea taken one step further: dimensions themselves get broken down into sub-dimensions (e.g., a product's brand and category become their own separate tables rather than plain strings inside the product dimension). This is more normalized, but star schemas are usually preferred anyway, because they're simpler for analysts to actually query. Fact tables in a real warehouse are routinely huge — tens of petabytes at the scale of a major retailer — and individual tables (fact *or* dimension) are often extremely wide, sometimes hundreds of columns, since a dimension table tends to accumulate every piece of metadata that might ever be relevant to some future analysis.
+
+> **The one thing to remember about this whole topic:** a data warehouse isn't a different *technology* so much as a different *purpose* — same relational/SQL interface on the surface in most cases, but internally optimized for "scan millions of rows, touch few columns, aggregate" instead of "find one row by key, fast." That mismatch in purpose is exactly what motivates everything in the next topic.
+
+---
+
+## Topic B: Column-oriented storage — built from zero
+
+*This section assumes no prior exposure to the idea at all — if you've only ever thought about rows, this rebuilds the concept from the ground up.*
+
+### Step 0 — the problem that makes this necessary
+
+Picture a warehouse fact table with over 100 columns — price, tax, discount, employee ID, store ID, timestamp, and on and on. Now picture a typical analytics query: something like "what's the total quantity sold for fruit and candy, broken down by day of the week, in 2013." That query only actually needs **three** of those hundred-plus columns: the date, the product category, and the quantity. Every other column is dead weight for this particular question — but a traditional storage layout can't skip loading them.
+
+### Step 1 — why "traditional" storage is the wrong shape here
+
+Almost every OLTP database (and document databases too) stores data **row-oriented**: every value belonging to one row sits physically next to each other on disk, so reading "row 42" means reading one contiguous chunk. This is exactly right when your query wants *one whole row* (a user's profile, an order) — which is the OLTP access pattern. But for our fruit-and-candy query, a row-oriented engine still has to pull every single one of those 100+ columns off disk for every matching row, just to throw away 97 of them after reading only 3. You pay the disk cost for data you never asked for.
+
+### Step 2 — the column-oriented idea, in one sentence
+
+**Instead of storing everything from one row together, store everything from one column together.** Give each column its own file (or contiguous chunk). Now, our query only needs to open and read *three* files — `date`, `category`, `quantity` — completely ignoring the other 97+, cutting the amount of data pulled from disk dramatically. The one rule that makes this work: every column file must store its values in the *same row order*, so the 23rd entry in every column file always belongs to the same underlying row — that's the only way to reassemble a full row later if you ever need to.
+
+### Step 3 — column storage compresses beautifully (and here's exactly how)
+
+Columns tend to have far fewer distinct values than there are rows — a retailer might have billions of sales rows but only a few hundred thousand distinct products, or a few hundred distinct countries. This repetitiveness is what makes columns compress so well, and one especially effective technique for it is **bitmap encoding**:
+
+1. Take a column with *n* distinct values (say, `product_sk` with 100,000 distinct products).
+2. Create *n* separate bitmaps — one per distinct value — each with exactly one bit per row in the table.
+3. In the bitmap for product X, a row's bit is `1` if that row sold product X, `0` otherwise.
+
+If *n* is small, storing one bit per row per bitmap is already compact. If *n* is large, most bitmaps end up mostly zeros ("sparse"), so they get **run-length encoded** on top (storing "40,000 zeros, then a 1, then 200,000 zeros" instead of literally writing out every bit) — shrinking things dramatically further.
+
+**Why this specific format is so useful, not just compact:** a query like "find rows where product is 30, 68, or 69" becomes a bitwise **OR** across three bitmaps — a famously cheap CPU operation. A query like "product 31 AND store 3" becomes a bitwise **AND** across two bitmaps. Both work correctly specifically *because* every column's bitmap lines up row-for-row — the k-th bit always means the same row across every bitmap in the table.
+
+*(Side note worth flagging: Cassandra and HBase's "column families," inherited from Bigtable, are not actually this technique — within a column family they store an entire row's columns together, with no column compression. Despite the name, that design is still fundamentally row-oriented.)*
+
+### Step 4 — column storage also helps the CPU, not just the disk
+
+Once data physically fits comfortably in a CPU's L1 cache (which compressed column data does far more easily than fat, uncompressed rows), a query engine can iterate through it in a tight, function-call-free loop — which a CPU executes dramatically faster than code full of per-record branching and function calls. Techniques like bitwise AND/OR operate directly on these compressed chunks. This overall approach — designing operators to work on compact chunks of column data at once, rather than one value at a time — is called **vectorized processing**.
+
+### Step 5 — sort order turns compression up even further
+
+Row order within a column store doesn't strictly matter (insertion order is the simplest default — a new row just appends to every column file). But choosing to *impose* a sort order — the same way SSTables do — can make queries much faster and compression much better. The critical rule: **you can't sort each column independently**, or you'd lose the row-alignment that lets you reconstruct anything. Sorting has to happen at the level of "pick full rows in this order," even though the data is *physically stored* by column.
+
+Pick your primary sort key based on your most common query pattern — if analysts mostly filter by recent date ranges, sorting by `date` first lets a query skip straight to the relevant chunk instead of scanning everything. A second sort key then orders any rows that tie on the first key (e.g., sort by product within each date, so same-product-same-day sales end up physically adjacent). And sorting supercharges compression: a low-cardinality column that's been sorted ends up with *long unbroken runs* of the same repeated value, which run-length encoding can crush down to almost nothing — even across billions of rows. This effect is strongest on the *first* sort key and gets progressively weaker on the second, third, and so on, since those columns are only sorted "within ties" of the columns before them.
+
+**Taking it further — multiple sort orders at once.** Since data usually needs to be replicated across machines for durability anyway, why not store each replica sorted a *different* way, and let the query optimizer pick whichever replica's sort order best matches the query at hand? (This is the approach taken by C-Store and its commercial descendant, Vertica.) It's conceptually similar to having several secondary indexes on a row store — except a column store's "alternate sort orders" hold the actual data itself, not just pointers back to it.
+
+### Step 6 — the catch: writes get harder
+
+Everything above optimizes reads at the direct expense of writes. You cannot update a compressed, sorted column file in place the way a B-tree overwrites a page — inserting one row in the middle of a sorted table could mean rewriting entire column files. The fix should look familiar: **use the LSM-tree approach from earlier in this chapter.** Writes land first in an in-memory sorted buffer (row- or column-oriented, doesn't matter at this stage); once enough writes accumulate, they get merged into the on-disk column files in bulk, all at once. A query simply checks both the in-memory buffer and the on-disk columns and combines results — the query optimizer hides that split from the person writing the query, so as far as an analyst is concerned, a just-inserted row shows up immediately in the next query.
+
+### Step 7 — pre-computing the aggregates: materialized views and data cubes
+
+If many different queries all compute the same aggregate (say, total sales by store, over and over), it's wasteful to recompute it from raw data every single time. A **materialized view** is the fix: unlike a normal (virtual) SQL view — which is just a saved query, expanded and re-run every time you read it — a materialized view is an actual, physical copy of a query's *results*, written to disk once and reused. The cost: whenever the underlying data changes, the materialized view has to be updated too, which makes writes more expensive — exactly why these are rare in OLTP but genuinely useful in a read-heavy warehouse.
+
+A **data cube** (or OLAP cube) is a specific, common flavor of materialized view: a grid of pre-computed aggregates across multiple dimensions at once. With two dimensions (say, date and product), you get a 2D grid where each cell holds the aggregate (a sum, say) for that exact date-product combination — and you can further collapse rows or columns to get "total by product regardless of date" or "total by date regardless of product" essentially for free. With five dimensions (date, product, store, promotion, customer — a realistic warehouse scenario) the same idea extends into a five-dimensional structure, impossible to draw but identical in principle.
+
+**The genuine trade-off**: a data cube makes specific, anticipated queries (like "total sales per store yesterday") extremely fast, since the answer is already sitting there precomputed. But it loses the flexibility of the raw data — if "price" was never one of the cube's dimensions, you simply cannot later ask "what fraction of sales came from items over $100," no matter how the existing dimensions are sliced. This is exactly why most warehouses keep the full raw fact table around regardless, and treat cubes purely as a targeted performance boost for known, frequent queries — not a replacement for the underlying data.
+
+## The one comparison table worth keeping for this whole topic
+
+| | Row-oriented storage | Column-oriented storage |
+|---|---|---|
+| **Best fit** | OLTP: fetch one whole row by key | OLAP: scan millions of rows, touch few columns |
+| **Physical layout** | all of one row's values stored together | all of one column's values stored together |
+| **Compression** | limited (mixed data types per row) | excellent — repetitive values, bitmap + run-length encoding |
+| **Writes** | in-place updates work fine (B-trees) | hard — needs an LSM-style buffered-write approach |
+| **CPU efficiency** | more branching, more function calls per record | vectorized processing on compact chunks |
+| **Bottleneck it targets** | disk seek time | disk bandwidth + CPU cache efficiency |
+
+## Terms worth being able to define cold
+
+- **OLTP / OLAP** — transaction-processing vs. analytics access patterns; small-lookups-by-key vs. huge-scans-with-aggregation.
+- **Data warehouse** — a separate, read-optimized copy of an organization's OLTP data, built specifically for analysts.
+- **ETL** — Extract, Transform, Load: the pipeline that populates a data warehouse from source OLTP systems.
+- **Star schema** — a fact table (events) surrounded by dimension tables (context), the standard warehouse data shape.
+- **Snowflake schema** — a more normalized star schema, with dimensions broken into sub-dimensions.
+- **Column-oriented storage** — storing each column contiguously instead of each row, so queries only load the columns they actually need.
+- **Bitmap encoding** — representing a column's distinct values as one bitmap per value, enabling cheap bitwise AND/OR queries.
+- **Vectorized processing** — operating on compact chunks of compressed column data in tight loops, exploiting CPU cache and avoiding per-record overhead.
+- **Materialized view** — a query's results, physically saved to disk, instead of recomputed on every read.
+- **Data cube (OLAP cube)** — a materialized view of aggregates across multiple dimensions simultaneously.
+
+## Questions I still don't have a crisp answer to
+
+- In practice, how do teams decide which columns get the "first sort key" privilege when there are several equally common query patterns competing for it?
+- Is the "keep the raw fact table around regardless of cubes" advice still the default in modern warehouses, or have improvements in raw-scan performance (columnar formats, better compression) made cubes less necessary than they used to be?

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OLTP, OLAP, and the data warehouse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EEEDE6; --paper-2:#E6E4D8; --ink:#1D2321; --ink-soft:#4B4A42;
+  --muted:#8A8776; --line:#CFCCBC; --accent:#B9762B; --accent-dim:#D8C39A;
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--paper); color:var(--ink); font-family:'Source Serif 4', Georgia, serif; font-size:19px; line-height:1.65;}
+.mono{font-family:'IBM Plex Mono', monospace}
+.top-nav{max-width:640px; margin:0 auto; padding:1.5rem 24px 0; display:flex; gap:10px; flex-wrap:wrap;}
+.nav-btn{font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--ink-soft); text-decoration:none; padding:6px 12px; border:1px solid var(--line); border-radius:4px;}
+.nav-btn:hover{border-color:var(--accent); color:var(--accent);}
+.nav-btn.back{color:var(--accent); border-color:var(--accent-dim);}
+.page-pips{max-width:640px; margin:0.75rem auto 0; padding:0 24px; display:flex; gap:6px; flex-wrap:wrap; font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--muted);}
+.page-pips span.on{color:var(--accent);} .page-pips a{color:inherit; text-decoration:none;}
+header{max-width:680px; margin:0 auto; padding:1.5rem 24px 2.5rem; border-bottom:1px solid var(--line);}
+header p.kicker{font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--accent); margin:0 0 1rem;}
+h1{font-size:32px; font-weight:600; margin:0 0 0.75rem;}
+header p.dek{font-size:18px; color:var(--ink-soft); margin:0; max-width:520px;}
+main{max-width:820px; margin:0 auto; padding:2.5rem 24px 5rem;}
+h3{font-size:24px; font-weight:600; margin:2rem 0 1rem;}
+p{margin:0 0 1rem; max-width:70ch;}
+section{padding-bottom:2rem; border-bottom:1px solid var(--line); margin-bottom:2rem;}
+.term{display:block; margin:0.75rem 0; padding:0.85rem 1rem; background:var(--paper-2); border-left:2px solid var(--accent-dim); font-size:16px; color:var(--ink-soft); max-width:70ch;}
+.term b{color:var(--ink); font-weight:600;}
+.panel{background:var(--paper-2); border:1px solid var(--line); border-radius:8px; padding:1.25rem; margin:1.25rem 0;}
+.playbtn{font-family:'IBM Plex Mono',monospace; font-size:13px; padding:7px 14px; border:1px solid var(--accent); color:var(--accent); background:none; border-radius:5px; cursor:pointer; margin-right:8px;}
+.playbtn:hover{background:var(--accent); color:var(--paper);}
+.status{font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--muted); margin-top:0.75rem;}
+.box{border:1px solid var(--ink); border-radius:6px; padding:8px 12px; font-family:'IBM Plex Mono',monospace; font-size:12px; transition:border-color .3s, background .3s, opacity .4s, transform .5s;}
+.box.active{border-color:var(--accent); background:var(--paper); border-width:2px;}
+.row{display:flex; align-items:center; gap:12px; margin:8px 0; flex-wrap:wrap;}
+table.ref{border-collapse:collapse; font-size:15px; margin:1rem 0 1.5rem; width:100%; max-width:70ch;}
+table.ref th, table.ref td{border-bottom:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top;}
+table.ref th{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); font-weight:500;}
+footer{max-width:680px; margin:0 auto; padding:3rem 24px 6rem; color:var(--muted); font-size:15px; border-top:1px solid var(--line);}
+</style>
+</head>
+<body>
+
+<nav class="top-nav">
+  <a href="../index.html" class="nav-btn back">&larr; what you don't know</a>
+  <a href="../../index.html" class="nav-btn">index</a>
+</nav>
+<div class="page-pips">
+  <a href="article-btrees.html">page 1 · B-trees</a> · <a href="article-comparison.html">page 2 · comparison</a> · <a href="article-other-indexes.html">page 3 · other indexes</a> ·
+  <span class="on">page 4 · data warehouse</span> · <a href="article-column-storage.html">page 5 · column storage</a>
+</div>
+
+<header>
+  <p class="kicker">chapter 03, part 3 — page 4 of 5</p>
+  <h1>OLTP, OLAP, and the data warehouse</h1>
+  <p class="dek">Two completely different reasons to touch a database. This page is entirely about that split — column-oriented storage, the technique it motivates, gets its own page next.</p>
+</header>
+
+<main>
+
+<section>
+<h3>Two shapes of access, animated side by side</h3>
+<p>Same underlying business, two totally different questions asked of the data.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runOLTP()">&#9654; OLTP: "show me order #4521"</button>
+  <button class="playbtn" onclick="runOLAP()">&#9654; OLAP: "total revenue per store, January"</button>
+  <div id="accessView" style="margin-top:1rem"></div>
+  <div class="status" id="accessStatus">Press either button to see what each query actually touches.</div>
+</div>
+<div class="term"><b>The bottleneck flips.</b> OLTP is bottlenecked on disk <i>seek time</i> — jumping to the right small spot, fast, over and over. OLAP is bottlenecked on disk <i>bandwidth</i> — however fast you can stream huge volumes of data off disk, since there's no "jumping to a small spot" to do.</div>
+</section>
+
+<section>
+<h3>ETL: how data actually gets into a warehouse</h3>
+<p>A large company runs many separate OLTP systems — website, checkout, inventory, supplier management, payroll — each guarded carefully so analytics traffic never risks slowing down real transactions. The fix is copying data out into a dedicated warehouse analysts can hit as hard as they want.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runETL()">&#9654; run the ETL pipeline</button>
+  <div id="etlView" style="margin-top:1rem"></div>
+  <div class="status" id="etlStatus">Three separate OLTP systems, about to feed one warehouse.</div>
+</div>
+</section>
+
+<section>
+<h3>The star schema, built one piece at a time</h3>
+<p>A fact table records events — one row per purchase. Dimension tables describe the who/what/where/when around each event. Watch the star assemble.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runStar()">&#9654; build the star schema</button>
+  <svg width="100%" viewBox="0 0 320 260" style="max-width:380px">
+    <title>Star schema: a fact table surrounded by dimension tables</title>
+    <rect id="factBox" x="120" y="100" width="80" height="50" rx="5" fill="none" stroke="var(--ink)" stroke-width="1.5" opacity="0"/>
+    <text id="factLabel" x="160" y="128" text-anchor="middle" font-size="10" fill="var(--ink)" font-family="IBM Plex Mono" opacity="0">fact_sales</text>
+    <line id="lineProduct" x1="160" y1="100" x2="160" y2="30" stroke="var(--accent)" opacity="0"/>
+    <rect id="dimProduct" x="120" y="8" width="80" height="30" rx="4" fill="none" stroke="var(--accent)" opacity="0"/>
+    <text id="dimProductLabel" x="160" y="27" text-anchor="middle" font-size="9" fill="var(--accent)" font-family="IBM Plex Mono" opacity="0">dim_product</text>
+    <line id="lineDate" x1="120" y1="115" x2="40" y2="115" stroke="var(--accent)" opacity="0"/>
+    <rect id="dimDate" x="0" y="100" width="70" height="30" rx="4" fill="none" stroke="var(--accent)" opacity="0"/>
+    <text id="dimDateLabel" x="35" y="119" text-anchor="middle" font-size="9" fill="var(--accent)" font-family="IBM Plex Mono" opacity="0">dim_date</text>
+    <line id="lineStore" x1="200" y1="115" x2="280" y2="115" stroke="var(--accent)" opacity="0"/>
+    <rect id="dimStore" x="250" y="100" width="70" height="30" rx="4" fill="none" stroke="var(--accent)" opacity="0"/>
+    <text id="dimStoreLabel" x="285" y="119" text-anchor="middle" font-size="9" fill="var(--accent)" font-family="IBM Plex Mono" opacity="0">dim_store</text>
+    <line id="lineCustomer" x1="160" y1="150" x2="160" y2="220" stroke="var(--accent)" opacity="0"/>
+    <rect id="dimCustomer" x="120" y="220" width="80" height="30" rx="4" fill="none" stroke="var(--accent)" opacity="0"/>
+    <text id="dimCustomerLabel" x="160" y="239" text-anchor="middle" font-size="9" fill="var(--accent)" font-family="IBM Plex Mono" opacity="0">dim_customer</text>
+  </svg>
+  <div class="status" id="starStatus">Each ray from the fact table is a foreign key into a dimension table.</div>
+</div>
+<div class="term"><b>Snowflake variant:</b> take any one of those dimension tables (say, <span class="mono">dim_product</span>) and split it further into sub-dimensions like brand and category, each referenced by foreign key instead of stored as plain text. More normalized, but usually skipped in favor of the simpler star, since it's easier for analysts to query.</div>
+</section>
+
+<section>
+<h3>Reference: OLTP vs. OLAP</h3>
+<table class="ref">
+<tr><th>property</th><th>OLTP</th><th>OLAP</th></tr>
+<tr><td>main read pattern</td><td>small number of records, fetched by key</td><td>aggregate over a huge number of records</td></tr>
+<tr><td>main write pattern</td><td>random-access, low-latency writes from user input</td><td>bulk import (ETL) or event stream</td></tr>
+<tr><td>used by</td><td>end user, via an app</td><td>internal analyst, for decision support</td></tr>
+<tr><td>represents</td><td>current state</td><td>history of events over time</td></tr>
+<tr><td>typical size</td><td>gigabytes-terabytes</td><td>terabytes-petabytes</td></tr>
+</table>
+</section>
+
+</main>
+
+<footer><p>Notes from Designing Data-Intensive Applications, ch. 3 — Martin Kleppmann. Continue to page 5 for column-oriented storage, built from zero.</p></footer>
+
+<script>
+async function runOLTP(){
+  const el = document.getElementById('accessView');
+  const status = document.getElementById('accessStatus');
+  el.innerHTML = `<div class="row"><div class="box" id="o1">order table (index on order_id)</div><div class="box" id="o2">→ row 4521</div></div>`;
+  status.textContent = 'jumping straight to one row, by key...';
+  await sleep(400);
+  document.getElementById('o1').classList.add('active');
+  await sleep(400);
+  document.getElementById('o2').classList.add('active');
+  status.textContent = 'one small, fast lookup. this is what "disk seek time" bound means.';
+}
+async function runOLAP(){
+  const el = document.getElementById('accessView');
+  const status = document.getElementById('accessStatus');
+  el.innerHTML = `<div class="row"><div class="box" id="a1">fact_sales (millions of rows)</div><div class="box" id="a2">scan January, group by store</div><div class="box" id="a3">→ one number per store</div></div>`;
+  status.textContent = 'scanning a huge volume of rows...';
+  await sleep(500);
+  document.getElementById('a1').classList.add('active');
+  await sleep(500);
+  document.getElementById('a2').classList.add('active');
+  await sleep(500);
+  document.getElementById('a3').classList.add('active');
+  status.textContent = 'millions of rows in, a handful of numbers out. this is what "disk bandwidth" bound means.';
+}
+async function runETL(){
+  const el = document.getElementById('etlView');
+  const status = document.getElementById('etlStatus');
+  el.innerHTML = `
+    <div class="row"><div class="box" id="s1">website OLTP</div><div class="box" id="s2">checkout OLTP</div><div class="box" id="s3">inventory OLTP</div></div>
+    <div class="row" style="justify-content:center; font-size:20px; color:var(--muted)">&darr; extract &darr; transform &darr; load &darr;</div>
+    <div class="row" style="justify-content:center"><div class="box" id="wh">data warehouse (read-only copy, analysis-friendly schema)</div></div>
+  `;
+  status.textContent = 'extracting from three independent OLTP systems...';
+  await sleep(500);
+  ['s1','s2','s3'].forEach(id=>document.getElementById(id).classList.add('active'));
+  await sleep(700);
+  status.textContent = 'transforming and loading into the warehouse — analysts can now query freely, with zero risk to live transactions.';
+  document.getElementById('wh').classList.add('active');
+}
+async function runStar(){
+  const parts = ['factBox','factLabel','lineProduct','dimProduct','dimProductLabel','lineDate','dimDate','dimDateLabel','lineStore','dimStore','dimStoreLabel','lineCustomer','dimCustomer','dimCustomerLabel'];
+  parts.forEach(id=>document.getElementById(id).style.opacity='0');
+  const status = document.getElementById('starStatus');
+  status.textContent = 'placing the fact table — one row per sale...';
+  document.getElementById('factBox').style.opacity='1';
+  document.getElementById('factLabel').style.opacity='1';
+  await sleep(600);
+  status.textContent = 'linking dim_product — which item was sold...';
+  document.getElementById('lineProduct').style.opacity='1'; document.getElementById('dimProduct').style.opacity='1'; document.getElementById('dimProductLabel').style.opacity='1';
+  await sleep(500);
+  status.textContent = 'linking dim_date — when it happened...';
+  document.getElementById('lineDate').style.opacity='1'; document.getElementById('dimDate').style.opacity='1'; document.getElementById('dimDateLabel').style.opacity='1';
+  await sleep(500);
+  status.textContent = 'linking dim_store — where it happened...';
+  document.getElementById('lineStore').style.opacity='1'; document.getElementById('dimStore').style.opacity='1'; document.getElementById('dimStoreLabel').style.opacity='1';
+  await sleep(500);
+  status.textContent = 'linking dim_customer — who bought it. the rays radiating out are exactly why it\'s called a star schema.';
+  document.getElementById('lineCustomer').style.opacity='1'; document.getElementById('dimCustomer').style.opacity='1'; document.getElementById('dimCustomerLabel').style.opacity='1';
+}
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+</script>
+</body>
+</html>

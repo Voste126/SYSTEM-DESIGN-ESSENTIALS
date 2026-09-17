@@ -11,7 +11,7 @@
 | :--- | :--- | :--- | :--- |
 | `01` | **Reliable, Scalable, Maintainable Applications** | [notes.md](01-reliable-scalable-maintainable/notes.md) | [article.html](01-reliable-scalable-maintainable/article.html) |
 | `02` | **Data models and query languages** | [notes.md](02-data-models-relational-vs-document/notes.md) | [article.html](02-data-models-relational-vs-document/article.html) |
-| `03` | **Data structures that power your database (4 pages)** | [notes.md](03-storage-and-retrieval/notes.md) | [article.html (4 pages)](03-storage-and-retrieval/article.html) |
+| `03` | **Data structures that power your database (5 pages)** | [notes.md](03-storage-and-retrieval/notes.md) | [article.html (5 pages)](03-storage-and-retrieval/article.html) |
 
 ---
 
