@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The subtle problems with JSON, XML, and CSV</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#EEEDE6;--paper-2:#E6E4D8;--ink:#1D2321;--ink-soft:#4B4A42;--muted:#8A8776;--line:#CFCCBC;--accent:#B9762B;--accent-dim:#D8C39A;--bad:#A6493A;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'Source Serif 4',Georgia,serif;font-size:19px;line-height:1.65;}
+.mono{font-family:'IBM Plex Mono',monospace}
+.top-nav{max-width:640px;margin:0 auto;padding:1.5rem 24px 0;display:flex;gap:10px;flex-wrap:wrap;}
+.nav-btn{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink-soft);text-decoration:none;padding:6px 12px;border:1px solid var(--line);border-radius:4px;}
+.nav-btn:hover{border-color:var(--accent);color:var(--accent);}
+.nav-btn.back{color:var(--accent);border-color:var(--accent-dim);}
+.page-pips{max-width:640px;margin:0.75rem auto 0;padding:0 24px;display:flex;gap:6px;flex-wrap:wrap;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);}
+.page-pips span.on{color:var(--accent);} .page-pips a{color:inherit;text-decoration:none;}
+header{max-width:680px;margin:0 auto;padding:1.5rem 24px 2.5rem;border-bottom:1px solid var(--line);}
+header p.kicker{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--accent);margin:0 0 1rem;}
+h1{font-size:32px;font-weight:600;margin:0 0 0.75rem;}
+header p.dek{font-size:18px;color:var(--ink-soft);margin:0;max-width:520px;}
+main{max-width:800px;margin:0 auto;padding:2.5rem 24px 5rem;}
+h3{font-size:24px;font-weight:600;margin:2rem 0 1rem;}
+p{margin:0 0 1rem;max-width:70ch;}
+section{padding-bottom:2rem;border-bottom:1px solid var(--line);margin-bottom:2rem;}
+.term{display:block;margin:0.75rem 0;padding:0.85rem 1rem;background:var(--paper-2);border-left:2px solid var(--accent-dim);font-size:16px;color:var(--ink-soft);max-width:70ch;}
+.term b{color:var(--ink);font-weight:600;}
+.panel{background:var(--paper-2);border:1px solid var(--line);border-radius:8px;padding:1.25rem;margin:1.25rem 0;}
+.playbtn{font-family:'IBM Plex Mono',monospace;font-size:13px;padding:7px 14px;border:1px solid var(--accent);color:var(--accent);background:none;border-radius:5px;cursor:pointer;margin-right:8px;}
+.playbtn:hover{background:var(--accent);color:var(--paper);}
+.status{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--muted);margin-top:0.75rem;}
+.box{border:1px solid var(--ink);border-radius:6px;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;transition:border-color .3s,background .3s,opacity .4s;}
+.box.active{border-color:var(--accent);background:var(--paper);border-width:2px;}
+.box.danger{border-color:var(--bad);color:var(--bad);}
+.row{display:flex;align-items:center;gap:14px;margin:10px 0;flex-wrap:wrap;}
+.bar-track{background:var(--paper);border:1px solid var(--line);border-radius:4px;height:22px;overflow:hidden;width:220px;}
+.bar-fill{height:100%;background:var(--accent);width:0%;transition:width .8s ease;}
+footer{max-width:680px;margin:0 auto;padding:3rem 24px 6rem;color:var(--muted);font-size:15px;border-top:1px solid var(--line);}
+</style>
+</head>
+<body>
+<nav class="top-nav">
+  <a href="../index.html" class="nav-btn back">&larr; what you don't know</a>
+  <a href="../../index.html" class="nav-btn">index</a>
+</nav>
+<div class="page-pips">
+  <a href="article-basics.html">page 1 · the basics</a> · <span class="on">page 2 · textual formats</span> · <a href="article-binary-formats.html">page 3 · binary encodings</a> · <a href="article-schema-evolution.html">page 4 · schema evolution</a>
+</div>
+<header>
+  <p class="kicker">chapter 04, part 1 — page 2 of 4</p>
+  <h1>The subtle problems with JSON, XML, and CSV</h1>
+  <p class="dek">These formats are genuinely good enough for a lot of real use — but "good enough" hides two sharp edges worth seeing directly rather than just being told about.</p>
+</header>
+<main>
+
+<section>
+<h3>Sharp edge 1: big numbers silently lose precision</h3>
+<p>JSON tells strings and numbers apart, but never distinguishes integers from floating-point, and specifies no precision. JavaScript stores every JSON number as a 64-bit float — which can only represent integers exactly up to about 9 quadrillion (2^53). Past that, things quietly go wrong.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runPrecision()">&#9654; parse a large tweet ID as JSON</button>
+  <div id="precisionView"></div>
+  <div class="status" id="precisionStatus">A 64-bit ID, about to be parsed by a JavaScript JSON parser.</div>
+</div>
+<div class="term"><b>Twitter's actual fix:</b> every tweet ID appears twice in API responses — once as a plain JSON number (which a JS client will mangle) and once as a string (which won't). Not elegant, but it works.</div>
+</section>
+
+<section>
+<h3>Sharp edge 2: no native way to store raw bytes</h3>
+<p>JSON and XML handle human-readable text beautifully but have no way to represent an arbitrary sequence of bytes that isn't text — an image thumbnail, a binary file. The workaround: Base64-encode the bytes into a text string.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runBase64()">&#9654; Base64-encode some binary data</button>
+  <div id="base64View"></div>
+  <div class="status" id="base64Status">Raw binary data, about to be encoded as text.</div>
+</div>
+<div class="term"><b>The cost:</b> Base64 inflates the data by about 33% — and you still need a schema somewhere to say "by the way, this field is Base64, decode it back to bytes before use," since nothing in plain JSON marks that on its own.</div>
+</section>
+
+<section>
+<h3>Reference: where each format actually stands</h3>
+<div class="term"><b>JSON</b> — distinguishes strings from numbers, not integers from floats; no binary support; schema optional and often skipped entirely.</div>
+<div class="term"><b>XML</b> — can't tell numbers from digit-strings without an external schema; no binary support either; has a more mature (if complex) schema ecosystem than JSON.</div>
+<div class="term"><b>CSV</b> — essentially no schema at all; your application defines what every column means; escaping rules for commas/newlines are formally specified, but not every parser actually implements them correctly.</div>
+</section>
+
+</main>
+<footer><p>Notes from Designing Data-Intensive Applications, ch. 4 — Martin Kleppmann. Continue to page 3 for binary encodings, starting with MessagePack.</p></footer>
+<script>
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+async function runPrecision(){
+  const el = document.getElementById('precisionView');
+  const status = document.getElementById('precisionStatus');
+  el.innerHTML = `<div class="row"><div class="box active" id="orig">tweet_id: 90071992547409924</div></div>
+    <div class="row"><span style="font-size:18px">&darr; parsed as a JS number (64-bit float)</span></div>
+    <div class="row"><div class="box" id="mangled">90071992547409920</div></div>`;
+  status.textContent = 'parsing this ID as a plain JSON number in JavaScript...';
+  await sleep(900);
+  document.getElementById('mangled').classList.add('danger');
+  status.textContent = 'the last few digits changed — silently. this is why Twitter also sends the ID as a string.';
+}
+async function runBase64(){
+  const el = document.getElementById('base64View');
+  const status = document.getElementById('base64Status');
+  el.innerHTML = `<div class="row"><div class="box active" id="rawBytes">raw bytes: 96 bytes</div></div>
+    <div class="row"><div class="bar-track"><div class="bar-fill" id="rawBar" style="width:100%"></div></div><span class="mono" id="rawLabel">96 bytes</span></div>
+    <div class="row" style="margin-top:12px"><div class="box" id="b64Bytes" style="opacity:0.3">Base64 text</div></div>
+    <div class="row"><div class="bar-track"><div class="bar-fill" id="b64Bar"></div></div><span class="mono" id="b64Label">? bytes</span></div>`;
+  status.textContent = 'encoding 96 bytes of raw binary as Base64 text...';
+  await sleep(700);
+  document.getElementById('b64Bytes').style.opacity='1'; document.getElementById('b64Bytes').classList.add('active');
+  document.getElementById('b64Bar').style.width='133%';
+  document.getElementById('b64Bar').style.background='var(--bad)';
+  document.getElementById('b64Label').textContent='128 bytes (+33%)';
+  status.textContent = 'same data, one third larger — purely from forcing binary into a text-only format.';
+}
+</script>
+</body>
+</html>

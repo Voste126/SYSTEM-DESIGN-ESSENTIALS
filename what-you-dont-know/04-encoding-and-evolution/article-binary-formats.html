@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Binary encodings: MessagePack, Thrift, Protocol Buffers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#EEEDE6;--paper-2:#E6E4D8;--ink:#1D2321;--ink-soft:#4B4A42;--muted:#8A8776;--line:#CFCCBC;--accent:#B9762B;--accent-dim:#D8C39A;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'Source Serif 4',Georgia,serif;font-size:19px;line-height:1.65;}
+.mono{font-family:'IBM Plex Mono',monospace}
+.top-nav{max-width:640px;margin:0 auto;padding:1.5rem 24px 0;display:flex;gap:10px;flex-wrap:wrap;}
+.nav-btn{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink-soft);text-decoration:none;padding:6px 12px;border:1px solid var(--line);border-radius:4px;}
+.nav-btn:hover{border-color:var(--accent);color:var(--accent);}
+.nav-btn.back{color:var(--accent);border-color:var(--accent-dim);}
+.page-pips{max-width:640px;margin:0.75rem auto 0;padding:0 24px;display:flex;gap:6px;flex-wrap:wrap;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);}
+.page-pips span.on{color:var(--accent);} .page-pips a{color:inherit;text-decoration:none;}
+header{max-width:680px;margin:0 auto;padding:1.5rem 24px 2.5rem;border-bottom:1px solid var(--line);}
+header p.kicker{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--accent);margin:0 0 1rem;}
+h1{font-size:32px;font-weight:600;margin:0 0 0.75rem;}
+header p.dek{font-size:18px;color:var(--ink-soft);margin:0;max-width:520px;}
+main{max-width:800px;margin:0 auto;padding:2.5rem 24px 5rem;}
+h3{font-size:24px;font-weight:600;margin:2rem 0 1rem;}
+p{margin:0 0 1rem;max-width:70ch;}
+section{padding-bottom:2rem;border-bottom:1px solid var(--line);margin-bottom:2rem;}
+.term{display:block;margin:0.75rem 0;padding:0.85rem 1rem;background:var(--paper-2);border-left:2px solid var(--accent-dim);font-size:16px;color:var(--ink-soft);max-width:70ch;}
+.term b{color:var(--ink);font-weight:600;}
+.panel{background:var(--paper-2);border:1px solid var(--line);border-radius:8px;padding:1.25rem;margin:1.25rem 0;}
+.playbtn{font-family:'IBM Plex Mono',monospace;font-size:13px;padding:7px 14px;border:1px solid var(--accent);color:var(--accent);background:none;border-radius:5px;cursor:pointer;margin-right:8px;margin-bottom:6px;}
+.playbtn:hover{background:var(--accent);color:var(--paper);}
+.status{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--muted);margin-top:0.75rem;}
+.bytegrid{display:flex;flex-wrap:wrap;gap:4px;margin-top:0.75rem;}
+.byte{border:1px solid var(--line);border-radius:3px;padding:4px 6px;font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--paper);transition:border-color .3s,background .3s;}
+.byte.field{border-color:var(--accent);background:var(--accent-dim);}
+.byte.data{border-color:var(--ink);background:var(--paper);}
+.bar-row{display:flex;align-items:center;gap:10px;margin:8px 0;font-family:'IBM Plex Mono',monospace;font-size:12px;}
+.bar-label{width:150px;flex-shrink:0;}
+.bar-track{flex:1;background:var(--paper);border:1px solid var(--line);border-radius:4px;height:20px;overflow:hidden;}
+.bar-fill{height:100%;background:var(--accent);width:0%;transition:width 1s ease;}
+footer{max-width:680px;margin:0 auto;padding:3rem 24px 6rem;color:var(--muted);font-size:15px;border-top:1px solid var(--line);}
+</style>
+</head>
+<body>
+<nav class="top-nav">
+  <a href="../index.html" class="nav-btn back">&larr; what you don't know</a>
+  <a href="../../index.html" class="nav-btn">index</a>
+</nav>
+<div class="page-pips">
+  <a href="article-basics.html">page 1 · the basics</a> · <a href="article-textual-formats.html">page 2 · textual formats</a> · <span class="on">page 3 · binary encodings</span> · <a href="article-schema-evolution.html">page 4 · schema evolution</a>
+</div>
+<header>
+  <p class="kicker">chapter 04, part 1 — page 3 of 4</p>
+  <h1>Binary encodings: MessagePack, Thrift, Protocol Buffers</h1>
+  <p class="dek">Same tiny record, encoded four different ways. Watch the byte count shrink as each format adds a bit more structure — and see exactly where those savings come from.</p>
+</header>
+<main>
+
+<section>
+<h3>The record we'll encode, all the way through this page</h3>
+<p style="font-family:'IBM Plex Mono',monospace; font-size:15px; background:var(--paper-2); padding:1rem; border-radius:6px;">{ userName: "Martin", favoriteNumber: 1337, interests: ["daydreaming", "hacking"] }</p>
+</section>
+
+<section>
+<h3>MessagePack: binary, but still no schema</h3>
+<p>MessagePack keeps JSON's data model exactly as-is, just encoded as bytes instead of text. Since there's still no schema anywhere, every field <i>name</i> has to be spelled out, literally, inside the encoded bytes.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runMsgPack()">&#9654; build the byte sequence, one piece at a time</button>
+  <div class="bytegrid" id="mpGrid"></div>
+  <div class="status" id="mpStatus">Press play to watch the encoder tag and spell out each field.</div>
+</div>
+<div class="term"><b>Result: 66 bytes</b> — barely smaller than the 81-byte plain-text JSON version. The field names (<span class="mono">userName</span>, <span class="mono">favoriteNumber</span>, <span class="mono">interests</span>) are sitting right there in the bytes, spelled out in full, every single time this record gets encoded.</div>
+</section>
+
+<section>
+<h3>Thrift and Protocol Buffers: add a schema, drop the field names</h3>
+<p>Both define the schema separately, ahead of time, giving each field a small integer <b>tag</b> instead of relying on its name. The encoded bytes then only need to contain the tag number — the schema (which both sides already have) is what maps tag 1 back to <span class="mono">userName</span>.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runTagged()">&#9654; encode the same record using tags instead of names</button>
+  <div class="bytegrid" id="tagGrid"></div>
+  <div class="status" id="tagStatus">Same record, no field names anywhere in the bytes.</div>
+</div>
+<div class="term"><b>required vs. optional</b> changes nothing about the actual bytes on the wire — there's no "required" marker in the encoding at all. The only difference is a runtime check: a required field gets validated as present after decoding, which is a code-level guarantee, not a wire-format one.</div>
+</section>
+
+<section>
+<h3>The size comparison, all four side by side</h3>
+<div class="panel">
+  <button class="playbtn" onclick="runSizeCompare()">&#9654; compare all four encodings</button>
+  <div class="bar-row"><div class="bar-label">plain JSON text</div><div class="bar-track"><div class="bar-fill" id="bar0"></div></div><span class="mono" id="lbl0">0</span></div>
+  <div class="bar-row"><div class="bar-label">MessagePack</div><div class="bar-track"><div class="bar-fill" id="bar1"></div></div><span class="mono" id="lbl1">0</span></div>
+  <div class="bar-row"><div class="bar-label">Thrift BinaryProtocol</div><div class="bar-track"><div class="bar-fill" id="bar2"></div></div><span class="mono" id="lbl2">0</span></div>
+  <div class="bar-row"><div class="bar-label">Thrift CompactProtocol</div><div class="bar-track"><div class="bar-fill" id="bar3"></div></div><span class="mono" id="lbl3">0</span></div>
+  <div class="bar-row"><div class="bar-label">Protocol Buffers</div><div class="bar-track"><div class="bar-fill" id="bar4"></div></div><span class="mono" id="lbl4">0</span></div>
+  <div class="status" id="sizeStatus">Same record, five encodings. Watch where the size actually comes from.</div>
+</div>
+<div class="term"><b>Where the savings come from, concretely:</b> CompactProtocol and Protocol Buffers both pack a field's type and tag into a single byte, and use variable-length integers — small numbers like 1337 take just two bytes instead of a fixed eight, using the top bit of each byte to say "more bytes follow." Combined with dropping field names entirely, that's the whole story behind going from 66 bytes down to 33.</div>
+</section>
+
+</main>
+<footer><p>Notes from Designing Data-Intensive Applications, ch. 4 — Martin Kleppmann. Continue to page 4 for how these field tags make schema evolution actually work.</p></footer>
+<script>
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+async function runMsgPack(){
+  const grid = document.getElementById('mpGrid');
+  const status = document.getElementById('mpStatus');
+  grid.innerHTML='';
+  const steps = [
+    {label:'0x83 (object, 3 fields)', cls:'field'},
+    {label:'0xa8 (string, len 8)', cls:'field'},
+    {label:'"userName"', cls:'data'},
+    {label:'0xa6 (string, len 6)', cls:'field'},
+    {label:'"Martin"', cls:'data'},
+    {label:'0xaf (string, len 15)', cls:'field'},
+    {label:'"favoriteNumber"', cls:'data'},
+    {label:'0xcd 1337', cls:'data'},
+    {label:'0xa9 "interests"', cls:'field'},
+    {label:'[...list bytes...]', cls:'data'},
+  ];
+  for(const s of steps){
+    const div = document.createElement('div');
+    div.className = 'byte '+s.cls;
+    div.textContent = s.label;
+    grid.appendChild(div);
+    status.textContent = s.cls==='field' ? 'tagging what comes next...' : 'writing the actual field name or value, spelled out in full...';
+    await sleep(280);
+  }
+  status.textContent = '66 bytes total — notice "userName", "favoriteNumber", and "interests" are all sitting there in plain text.';
+}
+async function runTagged(){
+  const grid = document.getElementById('tagGrid');
+  const status = document.getElementById('tagStatus');
+  grid.innerHTML='';
+  const steps = [
+    {label:'tag 1, type=string', cls:'field'},
+    {label:'"Martin"', cls:'data'},
+    {label:'tag 2, type=varint', cls:'field'},
+    {label:'1337 (2 bytes)', cls:'data'},
+    {label:'tag 3, type=list', cls:'field'},
+    {label:'"daydreaming","hacking"', cls:'data'},
+  ];
+  for(const s of steps){
+    const div = document.createElement('div');
+    div.className = 'byte '+s.cls;
+    div.textContent = s.label;
+    grid.appendChild(div);
+    status.textContent = s.cls==='field' ? 'writing tag number 1, 2, or 3 — never the field name...' : 'writing the actual value...';
+    await sleep(320);
+  }
+  status.textContent = 'no field names anywhere. the schema, held by both sides, is what maps tag 1 back to "userName".';
+}
+async function runSizeCompare(){
+  const sizes = [81,66,59,34,33];
+  const max = 81;
+  for(let i=0;i<sizes.length;i++){
+    document.getElementById('bar'+i).style.width = (sizes[i]/max*100)+'%';
+    document.getElementById('lbl'+i).textContent = sizes[i]+' bytes';
+    await sleep(350);
+  }
+  document.getElementById('sizeStatus').textContent = 'the jump from MessagePack to Thrift/Protobuf is the field-tag mechanism doing its job — nearly half the size, purely by not spelling out field names.';
+}
+</script>
+</body>
+</html>

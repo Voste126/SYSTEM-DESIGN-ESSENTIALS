@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Encoding and evolution — the basics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#EEEDE6;--paper-2:#E6E4D8;--ink:#1D2321;--ink-soft:#4B4A42;--muted:#8A8776;--line:#CFCCBC;--accent:#B9762B;--accent-dim:#D8C39A;--bad:#A6493A;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'Source Serif 4',Georgia,serif;font-size:19px;line-height:1.65;}
+.mono{font-family:'IBM Plex Mono',monospace}
+.top-nav{max-width:640px;margin:0 auto;padding:1.5rem 24px 0;display:flex;gap:10px;flex-wrap:wrap;}
+.nav-btn{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink-soft);text-decoration:none;padding:6px 12px;border:1px solid var(--line);border-radius:4px;}
+.nav-btn:hover{border-color:var(--accent);color:var(--accent);}
+.nav-btn.back{color:var(--accent);border-color:var(--accent-dim);}
+.page-pips{max-width:640px;margin:0.75rem auto 0;padding:0 24px;display:flex;gap:6px;flex-wrap:wrap;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);}
+.page-pips span.on{color:var(--accent);} .page-pips a{color:inherit;text-decoration:none;}
+header{max-width:680px;margin:0 auto;padding:1.5rem 24px 2.5rem;border-bottom:1px solid var(--line);}
+header p.kicker{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--accent);margin:0 0 1rem;}
+h1{font-size:32px;font-weight:600;margin:0 0 0.75rem;}
+header p.dek{font-size:18px;color:var(--ink-soft);margin:0;max-width:520px;}
+main{max-width:800px;margin:0 auto;padding:2.5rem 24px 5rem;}
+h3{font-size:24px;font-weight:600;margin:2rem 0 1rem;}
+p{margin:0 0 1rem;max-width:70ch;}
+section{padding-bottom:2rem;border-bottom:1px solid var(--line);margin-bottom:2rem;}
+.term{display:block;margin:0.75rem 0;padding:0.85rem 1rem;background:var(--paper-2);border-left:2px solid var(--accent-dim);font-size:16px;color:var(--ink-soft);max-width:70ch;}
+.term b{color:var(--ink);font-weight:600;}
+.panel{background:var(--paper-2);border:1px solid var(--line);border-radius:8px;padding:1.25rem;margin:1.25rem 0;}
+.playbtn{font-family:'IBM Plex Mono',monospace;font-size:13px;padding:7px 14px;border:1px solid var(--accent);color:var(--accent);background:none;border-radius:5px;cursor:pointer;margin-right:8px;}
+.playbtn:hover{background:var(--accent);color:var(--paper);}
+.status{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--muted);margin-top:0.75rem;}
+.box{border:1px solid var(--ink);border-radius:6px;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;transition:border-color .3s,background .3s,opacity .4s;}
+.box.active{border-color:var(--accent);background:var(--paper);border-width:2px;}
+.box.danger{border-color:var(--bad);color:var(--bad);}
+.row{display:flex;align-items:center;gap:14px;margin:10px 0;flex-wrap:wrap;}
+footer{max-width:680px;margin:0 auto;padding:3rem 24px 6rem;color:var(--muted);font-size:15px;border-top:1px solid var(--line);}
+</style>
+</head>
+<body>
+<nav class="top-nav">
+  <a href="../index.html" class="nav-btn back">&larr; what you don't know</a>
+  <a href="../../index.html" class="nav-btn">index</a>
+</nav>
+<div class="page-pips">
+  <span class="on">page 1 · the basics</span> · <a href="article-textual-formats.html">page 2 · textual formats</a> · <a href="article-binary-formats.html">page 3 · binary encodings</a> · <a href="article-schema-evolution.html">page 4 · schema evolution</a>
+</div>
+<header>
+  <p class="kicker">chapter 04, part 1 — page 1 of 4 — for a first-time reader</p>
+  <h1>What "encoding" actually means</h1>
+  <p class="dek">Old code, new code, old data, new data — all coexisting at once, and everything still has to work. This page covers why that's true, and why your language's built-in save/load feature is a trap for anything long-lived.</p>
+</header>
+<main>
+
+<section>
+<h3>Why old and new code have to coexist</h3>
+<p>A server-side rolling upgrade deploys a new version to a few machines at a time, watching for problems before continuing — which means old and new versions run side by side for a while, on purpose. Client-side apps are worse: a user might not update for months. Either way, your system has to keep working with a mix of old and new code, and old and new data, at the same time.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runCoexist()">&#9654; watch a rolling upgrade in progress</button>
+  <div id="coexistView"></div>
+  <div class="status" id="coexistStatus">Five servers, about to be upgraded two at a time.</div>
+</div>
+<div class="term"><b>Backward compatibility</b>: newer code can read data written by older code. <b>Forward compatibility</b>: older code can read data written by newer code — the harder direction, since old code has to gracefully ignore things it's never seen.</div>
+</section>
+
+<section>
+<h3>Encoding and decoding, in one animation</h3>
+<p>In memory, data is objects and pointers — fast for the CPU, meaningless to any other process. To save or send it, you flatten it into a self-contained sequence of bytes: <b>encoding</b>. Reversing that is <b>decoding</b>.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runEncode()">&#9654; encode, send, decode</button>
+  <div id="encodeView"></div>
+  <div class="status" id="encodeStatus">An in-memory object, about to cross a process boundary.</div>
+</div>
+</section>
+
+<section>
+<h3>Why your language's built-in serializer is a trap</h3>
+<p>Java's <span class="mono">Serializable</span>, Python's <span class="mono">pickle</span>, Ruby's <span class="mono">Marshal</span> — all convenient, all carrying the same four problems.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runDanger()">&#9654; see the security problem specifically</button>
+  <div id="dangerView"></div>
+  <div class="status" id="dangerStatus">Decoding untrusted bytes with a language-native deserializer.</div>
+</div>
+<div class="term"><b>The four problems, in short:</b> <b>lock-in</b> (tied to one language, forever); <b>security</b> (decoding often means instantiating arbitrary classes — a real, documented path to remote code execution if an attacker controls the bytes); <b>versioning as an afterthought</b> (not built with backward/forward compatibility in mind); <b>poor performance</b> (Java's built-in serialization is a frequently-cited example of both slow and bloated). The practical rule: don't use these for anything beyond short-lived, throwaway data.</div>
+</section>
+
+</main>
+<footer><p>Notes from Designing Data-Intensive Applications, ch. 4 — Martin Kleppmann. Continue to page 2 for JSON/XML/CSV's subtler problems.</p></footer>
+<script>
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+async function runCoexist(){
+  const el = document.getElementById('coexistView');
+  const status = document.getElementById('coexistStatus');
+  el.innerHTML = `<div class="row">${[1,2,3,4,5].map(n=>`<div class="box" id="srv${n}">server ${n}: v1</div>`).join('')}</div>`;
+  status.textContent = 'upgrading servers 1 and 2 first, watching for problems...';
+  await sleep(600);
+  document.getElementById('srv1').textContent='server 1: v2'; document.getElementById('srv1').classList.add('active');
+  document.getElementById('srv2').textContent='server 2: v2'; document.getElementById('srv2').classList.add('active');
+  status.textContent = 'v1 and v2 are now serving traffic simultaneously — this is normal, not a bug.';
+  await sleep(800);
+  document.getElementById('srv3').textContent='server 3: v2'; document.getElementById('srv3').classList.add('active');
+  document.getElementById('srv4').textContent='server 4: v2'; document.getElementById('srv4').classList.add('active');
+  await sleep(800);
+  document.getElementById('srv5').textContent='server 5: v2'; document.getElementById('srv5').classList.add('active');
+  status.textContent = 'fully rolled out — but for the whole duration, both versions had to correctly read the same data.';
+}
+async function runEncode(){
+  const el = document.getElementById('encodeView');
+  const status = document.getElementById('encodeStatus');
+  el.innerHTML = `<div class="row"><div class="box active" id="obj">in-memory object (pointers, live structure)</div></div>
+    <div class="row" id="arrow1" style="opacity:0.2"><span style="font-size:20px">&darr; encode</span></div>
+    <div class="row"><div class="box" id="bytes">byte sequence: 7b 22 75 73 65 72 4e ...</div></div>
+    <div class="row" id="arrow2" style="opacity:0.2"><span style="font-size:20px">&darr; send over network / write to disk</span></div>
+    <div class="row"><div class="box" id="bytes2" style="opacity:0.3">byte sequence (received elsewhere)</div></div>
+    <div class="row" id="arrow3" style="opacity:0.2"><span style="font-size:20px">&darr; decode</span></div>
+    <div class="row"><div class="box" id="obj2" style="opacity:0.3">reconstructed object</div></div>`;
+  await sleep(500);
+  document.getElementById('arrow1').style.opacity='1';
+  document.getElementById('bytes').classList.add('active');
+  status.textContent = 'encoding: pointers are meaningless elsewhere, so the object flattens into self-contained bytes...';
+  await sleep(700);
+  document.getElementById('arrow2').style.opacity='1';
+  document.getElementById('bytes2').style.opacity='1'; document.getElementById('bytes2').classList.add('active');
+  status.textContent = 'those bytes travel — over a network, into a file, wherever...';
+  await sleep(700);
+  document.getElementById('arrow3').style.opacity='1';
+  document.getElementById('obj2').style.opacity='1'; document.getElementById('obj2').classList.add('active');
+  status.textContent = 'decoding rebuilds an equivalent object on the other side. this round trip is the entire chapter.';
+}
+async function runDanger(){
+  const el = document.getElementById('dangerView');
+  const status = document.getElementById('dangerStatus');
+  el.innerHTML = `<div class="row"><div class="box danger" id="attackerBytes">attacker-controlled bytes</div><div class="box" id="decoder">language-native decoder</div></div>
+    <div class="row"><div class="box" id="result">?</div></div>`;
+  status.textContent = 'decoding requires being able to instantiate ANY class to rebuild the object graph...';
+  await sleep(700);
+  document.getElementById('attackerBytes').classList.add('active');
+  document.getElementById('decoder').classList.add('active');
+  await sleep(700);
+  document.getElementById('result').classList.add('danger');
+  document.getElementById('result').textContent = 'arbitrary class instantiated — a real path to remote code execution';
+  status.textContent = 'this is exactly why "never decode untrusted language-native serialized data" is a hard rule, not a suggestion.';
+}
+</script>
+</body>
+</html>
