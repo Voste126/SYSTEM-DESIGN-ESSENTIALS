@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dataflow through services: REST and SOAP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#EEEDE6;--paper-2:#E6E4D8;--ink:#1D2321;--ink-soft:#4B4A42;--muted:#8A8776;--line:#CFCCBC;--accent:#B9762B;--accent-dim:#D8C39A;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'Source Serif 4',Georgia,serif;font-size:19px;line-height:1.65;}
+.mono{font-family:'IBM Plex Mono',monospace}
+.top-nav{max-width:640px;margin:0 auto;padding:1.5rem 24px 0;display:flex;gap:10px;flex-wrap:wrap;}
+.nav-btn{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink-soft);text-decoration:none;padding:6px 12px;border:1px solid var(--line);border-radius:4px;}
+.nav-btn:hover{border-color:var(--accent);color:var(--accent);}
+.nav-btn.back{color:var(--accent);border-color:var(--accent-dim);}
+.page-pips{max-width:640px;margin:0.75rem auto 0;padding:0 24px;display:flex;gap:6px;flex-wrap:wrap;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);}
+.page-pips span.on{color:var(--accent);} .page-pips a{color:inherit;text-decoration:none;}
+header{max-width:680px;margin:0 auto;padding:1.5rem 24px 2.5rem;border-bottom:1px solid var(--line);}
+header p.kicker{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--accent);margin:0 0 1rem;}
+h1{font-size:32px;font-weight:600;margin:0 0 0.75rem;}
+header p.dek{font-size:18px;color:var(--ink-soft);margin:0;max-width:520px;}
+main{max-width:800px;margin:0 auto;padding:2.5rem 24px 5rem;}
+h3{font-size:24px;font-weight:600;margin:2rem 0 1rem;}
+p{margin:0 0 1rem;max-width:70ch;}
+section{padding-bottom:2rem;border-bottom:1px solid var(--line);margin-bottom:2rem;}
+.term{display:block;margin:0.75rem 0;padding:0.85rem 1rem;background:var(--paper-2);border-left:2px solid var(--accent-dim);font-size:16px;color:var(--ink-soft);max-width:70ch;}
+.term b{color:var(--ink);font-weight:600;}
+.panel{background:var(--paper-2);border:1px solid var(--line);border-radius:8px;padding:1.25rem;margin:1.25rem 0;}
+.playbtn{font-family:'IBM Plex Mono',monospace;font-size:13px;padding:7px 14px;border:1px solid var(--accent);color:var(--accent);background:none;border-radius:5px;cursor:pointer;margin-right:8px;margin-bottom:6px;}
+.playbtn:hover{background:var(--accent);color:var(--paper);}
+.status{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--muted);margin-top:0.75rem;}
+.box{border:1px solid var(--ink);border-radius:6px;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;transition:border-color .3s,background .3s,opacity .4s;}
+.box.active{border-color:var(--accent);background:var(--paper);border-width:2px;}
+.row{display:flex;align-items:center;gap:14px;margin:10px 0;flex-wrap:wrap;}
+.toggle-row{display:flex;gap:8px;margin-bottom:10px;}
+.toggle-row button{font-family:'IBM Plex Mono',monospace;font-size:13px;padding:7px 14px;border:1px solid var(--line);border-radius:5px;background:none;cursor:pointer;color:var(--ink-soft);}
+.toggle-row button.on{border-color:var(--accent);color:var(--accent);background:var(--paper);}
+.code-panel{display:none;background:var(--ink);color:var(--paper);border-radius:6px;padding:1rem;font-family:'IBM Plex Mono',monospace;font-size:12.5px;white-space:pre-wrap;}
+.code-panel.show{display:block;}
+footer{max-width:680px;margin:0 auto;padding:3rem 24px 6rem;color:var(--muted);font-size:15px;border-top:1px solid var(--line);}
+</style>
+</head>
+<body>
+<nav class="top-nav">
+  <a href="../index.html" class="nav-btn back">&larr; what you don't know</a>
+  <a href="../../index.html" class="nav-btn">index</a>
+</nav>
+<div class="page-pips">
+  <a href="article-basics.html">page 1 · the basics</a> · <a href="article-textual-formats.html">page 2 · textual formats</a> · <a href="article-binary-formats.html">page 3 · binary encodings</a> · <a href="article-schema-evolution.html">page 4 · schema evolution</a> · <a href="article-database-dataflow.html">page 5 · database dataflow</a> · <span class="on">page 6 · services & REST/SOAP</span> · <a href="article-rpc-problems.html">page 7 · problems with RPC</a> · <a href="article-rpc-directions.html">page 8 · RPC today</a> · <a href="article-rpc-evolution.html">page 9 · RPC evolution</a>
+</div>
+<header>
+  <p class="kicker">chapter 04, part 2 — page 6 of 9</p>
+  <h1>Dataflow through services: REST and SOAP</h1>
+  <p class="dek">A service is an API a server exposes; clients call it. Two philosophies for how to build that API turn out to barely agree on anything.</p>
+</header>
+<main>
+
+<section>
+<h3>Client, server, and the service in between</h3>
+<div class="panel">
+  <button class="playbtn" onclick="runServiceFlow()">&#9654; watch a service call, including a server-as-client hop</button>
+  <div id="serviceView"></div>
+  <div class="status" id="serviceStatus">A mobile app, a service, and that service's own downstream dependency.</div>
+</div>
+<div class="term"><b>Services vs. databases:</b> both let a caller submit and query data, but a database accepts arbitrary queries via a general-purpose language, while a service only accepts the specific inputs its own business logic predetermined — real encapsulation a raw database interface doesn't offer.</div>
+</section>
+
+<section>
+<h3>REST vs. SOAP: two philosophies, side by side</h3>
+<p>REST isn't a protocol — it's a design style built directly on HTTP's own features. SOAP is the opposite instinct: XML-based, technically HTTP-agnostic, layered with its own standards instead of using HTTP's.</p>
+<div class="panel">
+  <div class="toggle-row">
+    <button id="btn-rest" class="on" onclick="setStyle('rest')">REST</button>
+    <button id="btn-soap" onclick="setStyle('soap')">SOAP</button>
+  </div>
+  <div id="rest-panel" class="code-panel show">GET /users/42 HTTP/1.1
+Host: api.example.com
+Accept: application/json
+
+--- response ---
+{"id": 42, "name": "Martin"}
+
+# uses HTTP verbs, URLs, and headers directly.
+# readable with a browser or curl, no tooling needed.</div>
+  <div id="soap-panel" class="code-panel">POST /UserService HTTP/1.1
+Content-Type: text/xml
+
+&lt;soap:Envelope&gt;
+  &lt;soap:Body&gt;
+    &lt;GetUserRequest&gt;
+      &lt;UserId&gt;42&lt;/UserId&gt;
+    &lt;/GetUserRequest&gt;
+  &lt;/soap:Body&gt;
+&lt;/soap:Envelope&gt;
+
+# HTTP is just a transport here — SOAP avoids using
+# most of its native features, uses its own WS-* standards instead.
+# described by WSDL (not human-readable); needs code generation
+# and heavy tooling to use in practice.</div>
+</div>
+<div class="term"><b>Why REST pulled ahead, especially across organizations:</b> simpler tooling requirements, no code-generation dependency, and — despite SOAP being nominally standardized — real interoperability friction between different vendors' SOAP implementations in practice. REST APIs are typically documented with OpenAPI/Swagger rather than WSDL.</div>
+</section>
+
+</main>
+<footer><p>Notes from Designing Data-Intensive Applications, ch. 4 — Martin Kleppmann. Continue to page 7 for why RPC specifically is a much harder problem than either of these.</p></footer>
+<script>
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+async function runServiceFlow(){
+  const el = document.getElementById('serviceView');
+  const status = document.getElementById('serviceStatus');
+  el.innerHTML = `<div class="row"><div class="box" id="mobile">mobile app (client)</div><div class="box" id="svc1">order service (server)</div><div class="box" id="svc2">inventory service</div></div>`;
+  status.textContent = 'client calls the order service...';
+  await sleep(500);
+  document.getElementById('mobile').classList.add('active');
+  await sleep(400);
+  document.getElementById('svc1').classList.add('active');
+  status.textContent = 'the order service, to fulfill this request, now becomes a CLIENT itself — calling inventory...';
+  await sleep(600);
+  document.getElementById('svc2').classList.add('active');
+  status.textContent = 'one call, two service boundaries — this is exactly how microservices decompose one big app into many small ones.';
+}
+function setStyle(s){
+  document.getElementById('rest-panel').classList.toggle('show', s==='rest');
+  document.getElementById('soap-panel').classList.toggle('show', s==='soap');
+  document.getElementById('btn-rest').classList.toggle('on', s==='rest');
+  document.getElementById('btn-soap').classList.toggle('on', s==='soap');
+}
+</script>
+</body>
+</html>

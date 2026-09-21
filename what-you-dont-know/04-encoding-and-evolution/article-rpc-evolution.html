@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data encoding, evolution, and versioning for RPC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#EEEDE6;--paper-2:#E6E4D8;--ink:#1D2321;--ink-soft:#4B4A42;--muted:#8A8776;--line:#CFCCBC;--accent:#B9762B;--accent-dim:#D8C39A;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'Source Serif 4',Georgia,serif;font-size:19px;line-height:1.65;}
+.mono{font-family:'IBM Plex Mono',monospace}
+.top-nav{max-width:640px;margin:0 auto;padding:1.5rem 24px 0;display:flex;gap:10px;flex-wrap:wrap;}
+.nav-btn{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink-soft);text-decoration:none;padding:6px 12px;border:1px solid var(--line);border-radius:4px;}
+.nav-btn:hover{border-color:var(--accent);color:var(--accent);}
+.nav-btn.back{color:var(--accent);border-color:var(--accent-dim);}
+.page-pips{max-width:640px;margin:0.75rem auto 0;padding:0 24px;display:flex;gap:6px;flex-wrap:wrap;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);}
+.page-pips span.on{color:var(--accent);} .page-pips a{color:inherit;text-decoration:none;}
+header{max-width:680px;margin:0 auto;padding:1.5rem 24px 2.5rem;border-bottom:1px solid var(--line);}
+header p.kicker{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--accent);margin:0 0 1rem;}
+h1{font-size:32px;font-weight:600;margin:0 0 0.75rem;}
+header p.dek{font-size:18px;color:var(--ink-soft);margin:0;max-width:520px;}
+main{max-width:800px;margin:0 auto;padding:2.5rem 24px 5rem;}
+h3{font-size:24px;font-weight:600;margin:2rem 0 1rem;}
+p{margin:0 0 1rem;max-width:70ch;}
+section{padding-bottom:2rem;border-bottom:1px solid var(--line);margin-bottom:2rem;}
+.term{display:block;margin:0.75rem 0;padding:0.85rem 1rem;background:var(--paper-2);border-left:2px solid var(--accent-dim);font-size:16px;color:var(--ink-soft);max-width:70ch;}
+.term b{color:var(--ink);font-weight:600;}
+.panel{background:var(--paper-2);border:1px solid var(--line);border-radius:8px;padding:1.25rem;margin:1.25rem 0;}
+.playbtn{font-family:'IBM Plex Mono',monospace;font-size:13px;padding:7px 14px;border:1px solid var(--accent);color:var(--accent);background:none;border-radius:5px;cursor:pointer;margin-right:8px;margin-bottom:6px;}
+.playbtn:hover{background:var(--accent);color:var(--paper);}
+.status{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--muted);margin-top:0.75rem;}
+.box{border:1px solid var(--ink);border-radius:6px;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;transition:border-color .3s,background .3s,opacity .4s;}
+.box.active{border-color:var(--accent);background:var(--paper);border-width:2px;}
+.row{display:flex;align-items:center;gap:14px;margin:10px 0;flex-wrap:wrap;}
+.toggle-row{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+.toggle-row button{font-family:'IBM Plex Mono',monospace;font-size:13px;padding:7px 14px;border:1px solid var(--line);border-radius:5px;background:none;cursor:pointer;color:var(--ink-soft);}
+.toggle-row button.on{border-color:var(--accent);color:var(--accent);background:var(--paper);}
+.code-panel{display:none;background:var(--ink);color:var(--paper);border-radius:6px;padding:1rem;font-family:'IBM Plex Mono',monospace;font-size:12.5px;white-space:pre-wrap;}
+.code-panel.show{display:block;}
+footer{max-width:680px;margin:0 auto;padding:3rem 24px 6rem;color:var(--muted);font-size:15px;border-top:1px solid var(--line);}
+</style>
+</head>
+<body>
+<nav class="top-nav">
+  <a href="../index.html" class="nav-btn back">&larr; what you don't know</a>
+  <a href="../../index.html" class="nav-btn">index</a>
+</nav>
+<div class="page-pips">
+  <a href="article-basics.html">page 1 · the basics</a> · <a href="article-textual-formats.html">page 2 · textual formats</a> · <a href="article-binary-formats.html">page 3 · binary encodings</a> · <a href="article-schema-evolution.html">page 4 · schema evolution</a> · <a href="article-database-dataflow.html">page 5 · database dataflow</a> · <a href="article-services-dataflow.html">page 6 · services & REST/SOAP</a> · <a href="article-rpc-problems.html">page 7 · problems with RPC</a> · <a href="article-rpc-directions.html">page 8 · RPC today</a> · <span class="on">page 9 · RPC evolution</span>
+</div>
+<header>
+  <p class="kicker">chapter 04, part 2 — page 9 of 9 — closes out the chapter</p>
+  <h1>Data encoding, evolution, and versioning for RPC</h1>
+  <p class="dek">RPC gets one genuine simplification databases don't. It also gets one problem that's uniquely painful: a provider that can't force its own clients to upgrade.</p>
+</header>
+<main>
+
+<section>
+<h3>The simplification: servers upgrade first, always</h3>
+<p>For dataflow through services, it's reasonable to assume servers get updated before their clients. That narrows the requirement compared to databases, which need both directions, all the time.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runOrdering()">&#9654; watch the assumed upgrade order in action</button>
+  <div id="orderingView"></div>
+  <div class="status" id="orderingStatus">A service and its clients, about to upgrade in the expected order.</div>
+</div>
+<div class="term"><b>What this actually buys you:</b> you only need backward compatibility on <i>requests</i> (a server has to handle older clients' requests) and forward compatibility on <i>responses</i> (an older client has to handle a newer server's responses) — not the full "both directions, always" requirement databases face.</div>
+</section>
+
+<section>
+<h3>Where the compatibility rules actually come from</h3>
+<div class="term"><b>Thrift, gRPC (protobuf), Avro RPC</b> — inherit whatever compatibility rules their underlying encoding already has (the field-tag rules from earlier in this chapter, for the first two).</div>
+<div class="term"><b>SOAP</b> — requests/responses are XML-schema-defined; schemas can evolve, with some known subtle pitfalls.</div>
+<div class="term"><b>RESTful JSON APIs</b> — usually no formally specified schema at all; adding new optional request parameters, and adding new fields to response objects, are both generally treated as compatible changes in practice.</div>
+</section>
+
+<section>
+<h3>Why cross-organizational RPC is uniquely hard</h3>
+<p>A service provider frequently has zero control over its own clients, especially once an API is public — it can't force anyone to upgrade on any schedule. Compatibility sometimes has to hold indefinitely.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runVersioning()">&#9654; see how a breaking change actually gets handled</button>
+  <div id="versionView"></div>
+  <div class="status" id="versionStatus">A breaking API change, and clients stuck on the old version.</div>
+</div>
+</section>
+
+<section>
+<h3>How a client signals which version it wants — there's no single standard</h3>
+<div class="panel">
+  <div class="toggle-row">
+    <button id="btn-url" class="on" onclick="setVer('url')">version in the URL</button>
+    <button id="btn-header" onclick="setVer('header')">version in a header</button>
+    <button id="btn-key" onclick="setVer('key')">version tied to an API key</button>
+  </div>
+  <div id="ver-url" class="code-panel show">GET /v2/users/42 HTTP/1.1
+
+# simple, visible, easy to route on the server side
+# but "leaks" versioning into every URL a client hardcodes</div>
+  <div id="ver-header" class="code-panel">GET /users/42 HTTP/1.1
+Accept: application/vnd.example.v2+json
+
+# keeps the URL clean
+# less visible, easy to forget to set explicitly</div>
+  <div id="ver-key" class="code-panel">API key abc123 → server-side record: "wants v2"
+
+# version is set once via an admin interface, not per-request
+# useful when clients can't easily change request-time headers</div>
+</div>
+</section>
+
+</main>
+<footer><p>Notes from Designing Data-Intensive Applications, ch. 4 — Martin Kleppmann. This closes out chapter 4 across all nine pages.</p></footer>
+<script>
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+async function runOrdering(){
+  const el = document.getElementById('orderingView');
+  const status = document.getElementById('orderingStatus');
+  el.innerHTML = `<div class="row"><div class="box" id="srv">server: v1</div><div class="box" id="c1">client A: v1</div><div class="box" id="c2">client B: v1</div></div>`;
+  status.textContent = 'upgrading the server first, as assumed...';
+  await sleep(600);
+  document.getElementById('srv').textContent = 'server: v2';
+  document.getElementById('srv').classList.add('active');
+  status.textContent = 'server now v2, clients still v1 — server must handle old requests (backward compat)...';
+  await sleep(900);
+  document.getElementById('c1').textContent = 'client A: v2';
+  document.getElementById('c1').classList.add('active');
+  await sleep(600);
+  document.getElementById('c2').textContent = 'client B: v2';
+  document.getElementById('c2').classList.add('active');
+  status.textContent = 'clients catch up eventually — but during that gap, only backward-compat-on-requests and forward-compat-on-responses were ever required, never the reverse.';
+}
+async function runVersioning(){
+  const el = document.getElementById('versionView');
+  const status = document.getElementById('versionStatus');
+  el.innerHTML = `<div class="row"><div class="box" id="v1clients">thousands of external clients, still on API v1</div></div>
+    <div class="row"><div class="box" id="breaking">a genuinely breaking change is needed</div></div>`;
+  status.textContent = 'the provider has no way to force these clients to upgrade on any timeline...';
+  await sleep(800);
+  document.getElementById('v1clients').classList.add('active');
+  document.getElementById('breaking').classList.add('active');
+  await sleep(700);
+  el.innerHTML += `<div class="row"><div class="box active" id="both">v1 and v2 run side by side, indefinitely</div></div>`;
+  status.textContent = 'this is why public APIs so often maintain multiple live versions in parallel, rather than forcing a hard cutover.';
+}
+function setVer(v){
+  ['url','header','key'].forEach(x=>{
+    document.getElementById('ver-'+x).classList.toggle('show', x===v);
+    document.getElementById('btn-'+x).classList.toggle('on', x===v);
+  });
+}
+</script>
+</body>
+</html>

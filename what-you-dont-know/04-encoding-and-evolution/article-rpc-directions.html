@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Current directions for RPC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#EEEDE6;--paper-2:#E6E4D8;--ink:#1D2321;--ink-soft:#4B4A42;--muted:#8A8776;--line:#CFCCBC;--accent:#B9762B;--accent-dim:#D8C39A;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'Source Serif 4',Georgia,serif;font-size:19px;line-height:1.65;}
+.mono{font-family:'IBM Plex Mono',monospace}
+.top-nav{max-width:640px;margin:0 auto;padding:1.5rem 24px 0;display:flex;gap:10px;flex-wrap:wrap;}
+.nav-btn{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink-soft);text-decoration:none;padding:6px 12px;border:1px solid var(--line);border-radius:4px;}
+.nav-btn:hover{border-color:var(--accent);color:var(--accent);}
+.nav-btn.back{color:var(--accent);border-color:var(--accent-dim);}
+.page-pips{max-width:640px;margin:0.75rem auto 0;padding:0 24px;display:flex;gap:6px;flex-wrap:wrap;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);}
+.page-pips span.on{color:var(--accent);} .page-pips a{color:inherit;text-decoration:none;}
+header{max-width:680px;margin:0 auto;padding:1.5rem 24px 2.5rem;border-bottom:1px solid var(--line);}
+header p.kicker{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--accent);margin:0 0 1rem;}
+h1{font-size:32px;font-weight:600;margin:0 0 0.75rem;}
+header p.dek{font-size:18px;color:var(--ink-soft);margin:0;max-width:520px;}
+main{max-width:800px;margin:0 auto;padding:2.5rem 24px 5rem;}
+h3{font-size:24px;font-weight:600;margin:2rem 0 1rem;}
+p{margin:0 0 1rem;max-width:70ch;}
+section{padding-bottom:2rem;border-bottom:1px solid var(--line);margin-bottom:2rem;}
+.term{display:block;margin:0.75rem 0;padding:0.85rem 1rem;background:var(--paper-2);border-left:2px solid var(--accent-dim);font-size:16px;color:var(--ink-soft);max-width:70ch;}
+.term b{color:var(--ink);font-weight:600;}
+.panel{background:var(--paper-2);border:1px solid var(--line);border-radius:8px;padding:1.25rem;margin:1.25rem 0;}
+.playbtn{font-family:'IBM Plex Mono',monospace;font-size:13px;padding:7px 14px;border:1px solid var(--accent);color:var(--accent);background:none;border-radius:5px;cursor:pointer;margin-right:8px;margin-bottom:6px;}
+.playbtn:hover{background:var(--accent);color:var(--paper);}
+.status{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--muted);margin-top:0.75rem;}
+.box{border:1px solid var(--ink);border-radius:6px;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;transition:border-color .3s,background .3s,opacity .4s;}
+.box.active{border-color:var(--accent);background:var(--paper);border-width:2px;}
+.row{display:flex;align-items:center;gap:14px;margin:10px 0;flex-wrap:wrap;}
+table.ref{border-collapse:collapse;font-size:15px;margin:1rem 0 1.5rem;width:100%;max-width:70ch;}
+table.ref th,table.ref td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top;}
+table.ref th{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);font-weight:500;}
+table.ref td.mono{font-family:'IBM Plex Mono',monospace;font-size:13.5px;}
+footer{max-width:680px;margin:0 auto;padding:3rem 24px 6rem;color:var(--muted);font-size:15px;border-top:1px solid var(--line);}
+</style>
+</head>
+<body>
+<nav class="top-nav">
+  <a href="../index.html" class="nav-btn back">&larr; what you don't know</a>
+  <a href="../../index.html" class="nav-btn">index</a>
+</nav>
+<div class="page-pips">
+  <a href="article-basics.html">page 1 · the basics</a> · <a href="article-textual-formats.html">page 2 · textual formats</a> · <a href="article-binary-formats.html">page 3 · binary encodings</a> · <a href="article-schema-evolution.html">page 4 · schema evolution</a> · <a href="article-database-dataflow.html">page 5 · database dataflow</a> · <a href="article-services-dataflow.html">page 6 · services & REST/SOAP</a> · <a href="article-rpc-problems.html">page 7 · problems with RPC</a> · <span class="on">page 8 · RPC today</span> · <a href="article-rpc-evolution.html">page 9 · RPC evolution</a>
+</div>
+<header>
+  <p class="kicker">chapter 04, part 2 — page 8 of 9</p>
+  <h1>Current directions for RPC</h1>
+  <p class="dek">RPC didn't disappear despite page 7's problems — it got more honest about what it actually is.</p>
+</header>
+<main>
+
+<section>
+<h3>Modern frameworks, mapped to the encodings from part 1</h3>
+<table class="ref">
+<tr><th>framework</th><th>built on</th><th>notable feature</th></tr>
+<tr><td class="mono">gRPC</td><td>Protocol Buffers</td><td>supports streams — an ongoing series of requests/responses, not just one pair</td></tr>
+<tr><td class="mono">Thrift RPC</td><td>Thrift</td><td>RPC support included directly in the encoding library</td></tr>
+<tr><td class="mono">Avro RPC</td><td>Avro</td><td>inherits Avro's own schema evolution rules</td></tr>
+<tr><td class="mono">Finagle</td><td>Thrift</td><td>represents calls as futures/promises</td></tr>
+<tr><td class="mono">Rest.li</td><td>JSON over HTTP</td><td>REST-flavored, not binary</td></tr>
+</table>
+<div class="term"><b>What's different about this generation:</b> instead of hiding that a network call is fundamentally async and failure-prone, these frameworks are explicit about it — futures/promises make that failure-possibility part of the type system itself, rather than something bolted on after the fact.</div>
+</section>
+
+<section>
+<h3>Futures and streams, in one animation</h3>
+<div class="panel">
+  <button class="playbtn" onclick="runFutures()">&#9654; fire three requests in parallel using futures</button>
+  <div id="futuresView"></div>
+  <div class="status" id="futuresStatus">Three independent service calls, about to run concurrently.</div>
+</div>
+</section>
+
+<section>
+<h3>The actual tradeoff: custom binary RPC vs. REST</h3>
+<p>A purpose-built binary protocol can genuinely outperform generic JSON over REST. But REST wins on things raw performance doesn't erase.</p>
+<div class="term"><b>REST's real advantages:</b> you can poke it directly with a browser or <span class="mono">curl</span>, zero code generation needed; it's supported by every mainstream language and platform; and there's a massive existing ecosystem — caches, load balancers, proxies, firewalls, monitoring tools — all built to understand HTTP natively. This is exactly why REST dominates public-facing APIs, while RPC frameworks concentrate on internal service-to-service calls within one organization, where the performance edge matters more and the tooling gap matters less.</div>
+</section>
+
+</main>
+<footer><p>Notes from Designing Data-Intensive Applications, ch. 4 — Martin Kleppmann. Continue to page 9 for how compatibility and versioning specifically work for RPC.</p></footer>
+<script>
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+async function runFutures(){
+  const el = document.getElementById('futuresView');
+  const status = document.getElementById('futuresStatus');
+  el.innerHTML = `<div class="row">
+    <div class="box" id="f1">future: user profile</div>
+    <div class="box" id="f2">future: order history</div>
+    <div class="box" id="f3">future: recommendations</div>
+  </div>
+  <div class="row"><div class="box" id="combined" style="opacity:0.3">combined result (waits for all three)</div></div>`;
+  status.textContent = 'all three fired at once, none blocking the others...';
+  document.getElementById('f1').classList.add('active');
+  document.getElementById('f2').classList.add('active');
+  document.getElementById('f3').classList.add('active');
+  await sleep(500);
+  status.textContent = 'profile resolved...';
+  await sleep(400);
+  status.textContent = 'recommendations resolved...';
+  await sleep(500);
+  status.textContent = 'order history resolved — last one determines total wait time...';
+  await sleep(400);
+  document.getElementById('combined').style.opacity='1';
+  document.getElementById('combined').classList.add('active');
+  status.textContent = 'combined once all three are in. this is what futures/promises make easy to express directly.';
+}
+</script>
+</body>
+</html>

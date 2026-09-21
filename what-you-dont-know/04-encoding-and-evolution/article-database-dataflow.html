@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dataflow through databases</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#EEEDE6;--paper-2:#E6E4D8;--ink:#1D2321;--ink-soft:#4B4A42;--muted:#8A8776;--line:#CFCCBC;--accent:#B9762B;--accent-dim:#D8C39A;--bad:#A6493A;--good:#5B7A6B;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'Source Serif 4',Georgia,serif;font-size:19px;line-height:1.65;}
+.mono{font-family:'IBM Plex Mono',monospace}
+.top-nav{max-width:640px;margin:0 auto;padding:1.5rem 24px 0;display:flex;gap:10px;flex-wrap:wrap;}
+.nav-btn{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink-soft);text-decoration:none;padding:6px 12px;border:1px solid var(--line);border-radius:4px;}
+.nav-btn:hover{border-color:var(--accent);color:var(--accent);}
+.nav-btn.back{color:var(--accent);border-color:var(--accent-dim);}
+.page-pips{max-width:640px;margin:0.75rem auto 0;padding:0 24px;display:flex;gap:6px;flex-wrap:wrap;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);}
+.page-pips span.on{color:var(--accent);} .page-pips a{color:inherit;text-decoration:none;}
+header{max-width:680px;margin:0 auto;padding:1.5rem 24px 2.5rem;border-bottom:1px solid var(--line);}
+header p.kicker{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--accent);margin:0 0 1rem;}
+h1{font-size:32px;font-weight:600;margin:0 0 0.75rem;}
+header p.dek{font-size:18px;color:var(--ink-soft);margin:0;max-width:520px;}
+main{max-width:800px;margin:0 auto;padding:2.5rem 24px 5rem;}
+h3{font-size:24px;font-weight:600;margin:2rem 0 1rem;}
+p{margin:0 0 1rem;max-width:70ch;}
+section{padding-bottom:2rem;border-bottom:1px solid var(--line);margin-bottom:2rem;}
+.term{display:block;margin:0.75rem 0;padding:0.85rem 1rem;background:var(--paper-2);border-left:2px solid var(--accent-dim);font-size:16px;color:var(--ink-soft);max-width:70ch;}
+.term b{color:var(--ink);font-weight:600;}
+.term.bad{border-left-color:var(--bad);}
+.panel{background:var(--paper-2);border:1px solid var(--line);border-radius:8px;padding:1.25rem;margin:1.25rem 0;}
+.playbtn{font-family:'IBM Plex Mono',monospace;font-size:13px;padding:7px 14px;border:1px solid var(--accent);color:var(--accent);background:none;border-radius:5px;cursor:pointer;margin-right:8px;margin-bottom:6px;}
+.playbtn:hover{background:var(--accent);color:var(--paper);}
+.status{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--muted);margin-top:0.75rem;}
+.box{border:1px solid var(--ink);border-radius:6px;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;transition:border-color .3s,background .3s,opacity .4s;}
+.box.active{border-color:var(--accent);background:var(--paper);border-width:2px;}
+.box.bad{border-color:var(--bad);color:var(--bad);}
+.box.good{border-color:var(--good);color:var(--good);}
+.row{display:flex;align-items:center;gap:14px;margin:10px 0;flex-wrap:wrap;}
+footer{max-width:680px;margin:0 auto;padding:3rem 24px 6rem;color:var(--muted);font-size:15px;border-top:1px solid var(--line);}
+</style>
+</head>
+<body>
+<nav class="top-nav">
+  <a href="../index.html" class="nav-btn back">&larr; what you don't know</a>
+  <a href="../../index.html" class="nav-btn">index</a>
+</nav>
+<div class="page-pips">
+  <a href="article-basics.html">page 1 · the basics</a> · <a href="article-textual-formats.html">page 2 · textual formats</a> · <a href="article-binary-formats.html">page 3 · binary encodings</a> · <a href="article-schema-evolution.html">page 4 · schema evolution</a> · <span class="on">page 5 · database dataflow</span> · <a href="article-services-dataflow.html">page 6 · services & REST/SOAP</a> · <a href="article-rpc-problems.html">page 7 · problems with RPC</a> · <a href="article-rpc-directions.html">page 8 · RPC today</a> · <a href="article-rpc-evolution.html">page 9 · RPC evolution</a>
+</div>
+<header>
+  <p class="kicker">chapter 04, part 2 — page 5 of 9</p>
+  <h1>Dataflow through databases</h1>
+  <p class="dek">The simplest possible case: writing to a database is sending a message to your future self. That framing makes both compatibility directions, and one very avoidable data-loss trap, easy to see.</p>
+</header>
+<main>
+
+<section>
+<h3>Writing is encoding, reading later is decoding</h3>
+<p>If the same process writes and later reads its own data, storing something in a database is exactly like sending a message forward in time to yourself.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runFutureSelf()">&#9654; send a message to your future self</button>
+  <div id="futureView"></div>
+  <div class="status" id="futureStatus">A value, about to be written today and read next year.</div>
+</div>
+<div class="term"><b>Why both directions matter here:</b> backward compatibility is obvious (future-you must read past-you's writes). But databases are almost always accessed by <i>many</i> processes at once — some mid-upgrade, some not — so forward compatibility (old code reading new code's writes) is just as necessary, for a completely different reason: concurrent versions, not time travel.</div>
+</section>
+
+<section>
+<h3>The trap: a round trip through a model object can silently drop a field</h3>
+<p>New code writes a record including a new field. Old code reads it, changes something unrelated, and writes it back. The field should survive that round trip — but it doesn't always.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runLostField()">&#9654; watch the field get lost</button>
+  <div id="lostFieldView"></div>
+  <div class="status" id="lostFieldStatus">A record, written by new code, about to be touched by old code.</div>
+</div>
+<div class="term bad"><b>Where it actually breaks:</b> not at the encoding level — most formats preserve unknown fields on the wire just fine. It breaks when old code decodes the record into an in-memory model object that has no slot for the unknown field, edits that object, and re-encodes <i>the object</i> rather than the original bytes. The field was never lost by the format; it was lost because the in-memory representation had nowhere to keep it.</div>
+</section>
+
+<section>
+<h3>"Data outlives code"</h3>
+<p>A deploy can replace an entire server-side codebase within minutes. A database's contents don't get that luxury — five-year-old rows, written under a five-year-old schema, are often still sitting there untouched.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runOutlives()">&#9654; scan a table spanning several schema eras</button>
+  <div id="outlivesView"></div>
+  <div class="status" id="outlivesStatus">One table, rows written at very different times.</div>
+</div>
+<div class="term"><b>Why full rewrites are rare:</b> migrating a large existing dataset into a new schema is possible but expensive, so most systems avoid it. Simple changes — like adding a nullable column — sidestep the problem entirely: old rows are just treated as having <span class="mono">null</span> for a column that didn't exist yet when they were written.</div>
+</section>
+
+<section>
+<h3>Archival storage: the one case where you get to cheat</h3>
+<p>A backup or warehouse-bound snapshot doesn't have to preserve historical schema mixing — since you're rewriting the data anyway, you can normalize everything to the latest schema on the way out, producing an internally consistent dump even from a messy live source. Since the dump is written once and never modified again, an immutable format like Avro's object container files fits naturally — and it's a convenient moment to switch to an analytics-friendly column-oriented layout too.</p>
+</section>
+
+</main>
+<footer><p>Notes from Designing Data-Intensive Applications, ch. 4 — Martin Kleppmann. Continue to page 6 for dataflow through services.</p></footer>
+<script>
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+async function runFutureSelf(){
+  const el = document.getElementById('futureView');
+  const status = document.getElementById('futureStatus');
+  el.innerHTML = `<div class="row"><div class="box active" id="writeNow">2024: write {status:"active"}</div></div>
+    <div class="row" id="arrow" style="opacity:0.2"><span style="font-size:20px">&darr; time passes, same schema-reading code</span></div>
+    <div class="row"><div class="box" id="readLater" style="opacity:0.3">2025: read {status:"active"}</div></div>`;
+  status.textContent = 'writing today...';
+  await sleep(600);
+  document.getElementById('arrow').style.opacity='1';
+  await sleep(700);
+  document.getElementById('readLater').style.opacity='1';
+  document.getElementById('readLater').classList.add('active');
+  status.textContent = 'reading next year — this only works because the code stayed backward compatible with its own past writes.';
+}
+async function runLostField(){
+  const el = document.getElementById('lostFieldView');
+  const status = document.getElementById('lostFieldStatus');
+  el.innerHTML = `<div class="row"><div class="box active" id="newWrite">new code writes: {name:"Martin", email:"m@x.com"}</div></div>
+    <div class="row"><span style="font-size:18px">&rarr; old code reads into a model object</span></div>
+    <div class="row"><div class="box" id="modelObj">Person(name, ) &larr; no "email" field exists in this class</div></div>`;
+  status.textContent = 'old code decodes the record into its own model class...';
+  await sleep(700);
+  document.getElementById('modelObj').classList.add('bad');
+  status.textContent = 'the model object has no slot for "email" — it never even gets loaded in.';
+  await sleep(800);
+  el.innerHTML += `<div class="row"><span style="font-size:18px">&rarr; old code updates name, re-encodes the object, writes it back</span></div>
+    <div class="row"><div class="box bad" id="rewritten">{name:"Martin Smith"} — email is gone</div></div>`;
+  status.textContent = 'the field wasn\'t dropped by the encoding — it was dropped because the in-memory object never had anywhere to hold it.';
+}
+async function runOutlives(){
+  const el = document.getElementById('outlivesView');
+  const status = document.getElementById('outlivesStatus');
+  el.innerHTML = `<div class="row">
+    <div class="box" id="r1">row from 2019 (schema v1)</div>
+    <div class="box" id="r2">row from 2022 (schema v2)</div>
+    <div class="box" id="r3">row from today (schema v3)</div>
+  </div>`;
+  status.textContent = 'a single query has to correctly read all three, at once, right now...';
+  await sleep(500);
+  ['r1','r2','r3'].forEach(id=>document.getElementById(id).classList.add('active'));
+  await sleep(700);
+  status.textContent = 'the database appears to have "one schema" — but only because schema evolution rules make old and new versions all readable together.';
+}
+</script>
+</body>
+</html>

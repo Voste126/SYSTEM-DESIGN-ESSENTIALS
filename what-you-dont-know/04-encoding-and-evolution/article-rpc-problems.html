@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The problems with RPC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#EEEDE6;--paper-2:#E6E4D8;--ink:#1D2321;--ink-soft:#4B4A42;--muted:#8A8776;--line:#CFCCBC;--accent:#B9762B;--accent-dim:#D8C39A;--bad:#A6493A;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'Source Serif 4',Georgia,serif;font-size:19px;line-height:1.65;}
+.mono{font-family:'IBM Plex Mono',monospace}
+.top-nav{max-width:640px;margin:0 auto;padding:1.5rem 24px 0;display:flex;gap:10px;flex-wrap:wrap;}
+.nav-btn{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink-soft);text-decoration:none;padding:6px 12px;border:1px solid var(--line);border-radius:4px;}
+.nav-btn:hover{border-color:var(--accent);color:var(--accent);}
+.nav-btn.back{color:var(--accent);border-color:var(--accent-dim);}
+.page-pips{max-width:640px;margin:0.75rem auto 0;padding:0 24px;display:flex;gap:6px;flex-wrap:wrap;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);}
+.page-pips span.on{color:var(--accent);} .page-pips a{color:inherit;text-decoration:none;}
+header{max-width:680px;margin:0 auto;padding:1.5rem 24px 2.5rem;border-bottom:1px solid var(--line);}
+header p.kicker{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--accent);margin:0 0 1rem;}
+h1{font-size:32px;font-weight:600;margin:0 0 0.75rem;}
+header p.dek{font-size:18px;color:var(--ink-soft);margin:0;max-width:520px;}
+main{max-width:800px;margin:0 auto;padding:2.5rem 24px 5rem;}
+h3{font-size:24px;font-weight:600;margin:2rem 0 1rem;}
+p{margin:0 0 1rem;max-width:70ch;}
+section{padding-bottom:2rem;border-bottom:1px solid var(--line);margin-bottom:2rem;}
+.term{display:block;margin:0.75rem 0;padding:0.85rem 1rem;background:var(--paper-2);border-left:2px solid var(--accent-dim);font-size:16px;color:var(--ink-soft);max-width:70ch;}
+.term b{color:var(--ink);font-weight:600;}
+.term.bad{border-left-color:var(--bad);}
+.panel{background:var(--paper-2);border:1px solid var(--line);border-radius:8px;padding:1.25rem;margin:1.25rem 0;}
+.playbtn{font-family:'IBM Plex Mono',monospace;font-size:13px;padding:7px 14px;border:1px solid var(--accent);color:var(--accent);background:none;border-radius:5px;cursor:pointer;margin-right:8px;margin-bottom:6px;}
+.playbtn:hover{background:var(--accent);color:var(--paper);}
+.status{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--muted);margin-top:0.75rem;}
+.box{border:1px solid var(--ink);border-radius:6px;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;transition:border-color .3s,background .3s,opacity .4s;}
+.box.active{border-color:var(--accent);background:var(--paper);border-width:2px;}
+.box.bad{border-color:var(--bad);color:var(--bad);}
+.row{display:flex;align-items:center;gap:14px;margin:10px 0;flex-wrap:wrap;}
+ul.compact{margin:0.5rem 0 1rem;padding-left:1.2rem;}
+ul.compact li{margin-bottom:0.5rem;}
+footer{max-width:680px;margin:0 auto;padding:3rem 24px 6rem;color:var(--muted);font-size:15px;border-top:1px solid var(--line);}
+</style>
+</head>
+<body>
+<nav class="top-nav">
+  <a href="../index.html" class="nav-btn back">&larr; what you don't know</a>
+  <a href="../../index.html" class="nav-btn">index</a>
+</nav>
+<div class="page-pips">
+  <a href="article-basics.html">page 1 · the basics</a> · <a href="article-textual-formats.html">page 2 · textual formats</a> · <a href="article-binary-formats.html">page 3 · binary encodings</a> · <a href="article-schema-evolution.html">page 4 · schema evolution</a> · <a href="article-database-dataflow.html">page 5 · database dataflow</a> · <a href="article-services-dataflow.html">page 6 · services & REST/SOAP</a> · <span class="on">page 7 · problems with RPC</span> · <a href="article-rpc-directions.html">page 8 · RPC today</a> · <a href="article-rpc-evolution.html">page 9 · RPC evolution</a>
+</div>
+<header>
+  <p class="kicker">chapter 04, part 2 — page 7 of 9 — the conceptual core of this part</p>
+  <h1>The problems with RPC</h1>
+  <p class="dek">RPC's whole promise is making a network call feel like calling a local function. Two animations below show exactly why that promise can't actually be kept.</p>
+</header>
+<main>
+
+<section>
+<h3>Local calls are predictable. Network calls have a fourth outcome.</h3>
+<p>A local function call succeeds, throws, or (rarely) never returns. A network call has a possibility neither of those has: it can time out with no way to know what actually happened on the other end.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runTimeout()">&#9654; send a request that times out</button>
+  <div id="timeoutView"></div>
+  <div class="status" id="timeoutStatus">A request, about to hit an unpredictable network.</div>
+</div>
+<div class="term bad"><b>The genuinely hard part:</b> you don't know if the request never arrived, or if it arrived and was processed but the <i>response</i> got lost on the way back. Those two situations call for opposite responses, and from the caller's side, they're indistinguishable.</div>
+</section>
+
+<section>
+<h3>Retrying a "failed" request can duplicate a real action</h3>
+<p>If you retry after a timeout, and it turns out the original request actually went through, you've now told the server to do the same thing twice — something a local function call structurally cannot do to itself.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runDuplicate()">&#9654; retry a request that actually succeeded</button>
+  <div id="dupView"></div>
+  <div class="status" id="dupStatus">"Charge $50" — about to be retried after an apparent timeout.</div>
+</div>
+<div class="term"><b>The fix isn't automatic:</b> avoiding this requires deliberately building deduplication (idempotence) into the protocol — tagging each request with a unique ID the server can recognize as "already handled," so a retry is safe rather than repeating the action.</div>
+</section>
+
+<section>
+<h3>The rest of the list, briefly</h3>
+<ul class="compact">
+<li><b>Latency is wildly less predictable.</b> A local call takes roughly the same time every time; a network call can be sub-millisecond one moment and many seconds the next, for the exact same request, depending on network and remote-service conditions entirely outside your control.</li>
+<li><b>You can't just pass a pointer.</b> A local call hands over a reference to memory already sitting there. A network call has to encode every parameter into bytes first — fine for small values, increasingly awkward as objects grow larger or more complex.</li>
+<li><b>Cross-language type mismatches.</b> If client and server are different languages, the framework has to translate types between them — and languages don't all agree on what types exist (the large-integer precision issue from earlier in this chapter is a direct instance of exactly this problem).</li>
+</ul>
+<div class="term"><b>The conclusion this leads to:</b> don't try to disguise a network call as a local one. Part of REST's appeal is that it never pretends otherwise — even though people still build RPC-style libraries on top of REST anyway.</div>
+</section>
+
+</main>
+<footer><p>Notes from Designing Data-Intensive Applications, ch. 4 — Martin Kleppmann. Continue to page 8 for how modern RPC frameworks respond to these exact problems.</p></footer>
+<script>
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+async function runTimeout(){
+  const el = document.getElementById('timeoutView');
+  const status = document.getElementById('timeoutStatus');
+  el.innerHTML = `<div class="row"><div class="box active" id="req">client sends request</div><div class="box" id="net">network</div><div class="box" id="srv">server</div></div>
+    <div class="row"><div class="box" id="waiting">waiting for response...</div></div>`;
+  status.textContent = 'request sent, waiting...';
+  await sleep(1200);
+  document.getElementById('waiting').classList.add('bad');
+  document.getElementById('waiting').textContent = 'timeout — no response received';
+  status.textContent = 'did the server never get it? did it process it and the response got lost? there is no way to tell from here.';
+}
+async function runDuplicate(){
+  const el = document.getElementById('dupView');
+  const status = document.getElementById('dupStatus');
+  el.innerHTML = `<div class="row"><div class="box active" id="req1">request 1: charge $50</div></div>
+    <div class="row"><div class="box" id="processed">server: charged successfully</div></div>
+    <div class="row"><div class="box bad" id="lost">...but the response is lost on the way back</div></div>`;
+  status.textContent = 'the charge actually succeeded...';
+  await sleep(700);
+  document.getElementById('processed').classList.add('active');
+  await sleep(700);
+  document.getElementById('lost').style.opacity='1';
+  status.textContent = 'client sees only a timeout, and — reasonably — retries...';
+  await sleep(900);
+  el.innerHTML += `<div class="row"><div class="box bad" id="req2">request 2 (retry): charge $50 again</div></div>
+    <div class="row"><div class="box bad" id="doubled">customer charged $100 total</div></div>`;
+  status.textContent = 'without built-in deduplication, the retry just repeats the action — a local function call could never do this to itself.';
+}
+</script>
+</body>
+</html>
