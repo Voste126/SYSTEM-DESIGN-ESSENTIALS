@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecture, rules, and rate limit headers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#EEEDE6;--paper-2:#E6E4D8;--ink:#1D2321;--ink-soft:#4B4A42;--muted:#8A8776;--line:#CFCCBC;--accent:#B9762B;--accent-dim:#D8C39A;--bad:#A6493A;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'Source Serif 4',Georgia,serif;font-size:19px;line-height:1.65;}
+.mono{font-family:'IBM Plex Mono',monospace}
+.top-nav{max-width:1400px;margin:0 auto;padding:1.5rem 32px 0;display:flex;gap:10px;flex-wrap:wrap;}
+.nav-btn{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink-soft);text-decoration:none;padding:6px 12px;border:1px solid var(--line);border-radius:4px;}
+.nav-btn:hover{border-color:var(--accent);color:var(--accent);}
+.nav-btn.back{color:var(--accent);border-color:var(--accent-dim);}
+.page-pips{max-width:1400px;margin:0.75rem auto 0;padding:0 32px;display:flex;gap:6px;flex-wrap:wrap;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);}
+.page-pips span.on{color:var(--accent);} .page-pips a{color:inherit;text-decoration:none;}
+header{max-width:1400px;margin:0 auto;padding:1.5rem 32px 2.5rem;border-bottom:1px solid var(--line);}
+header p.kicker{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--accent);margin:0 0 1rem;}
+h1{font-size:36px;font-weight:600;margin:0 0 0.75rem;}
+header p.dek{font-size:19px;color:var(--ink-soft);margin:0;max-width:760px;}
+main{max-width:1400px;margin:0 auto;padding:2.5rem 32px 5rem;}
+h3{font-size:26px;font-weight:600;margin:2rem 0 1rem;}
+p{margin:0 0 1rem;max-width:90ch;}
+section{padding-bottom:2.5rem;border-bottom:1px solid var(--line);margin-bottom:2.5rem;}
+.term{display:block;margin:0.75rem 0;padding:1rem 1.25rem;background:var(--paper-2);border-left:2px solid var(--accent-dim);font-size:16px;color:var(--ink-soft);max-width:90ch;}
+.term b{color:var(--ink);font-weight:600;}
+.panel{background:var(--paper-2);border:1px solid var(--line);border-radius:8px;padding:1.5rem;margin:1.5rem 0;}
+.playbtn{font-family:'IBM Plex Mono',monospace;font-size:13px;padding:8px 16px;border:1px solid var(--accent);color:var(--accent);background:none;border-radius:5px;cursor:pointer;margin-right:8px;margin-bottom:8px;}
+.playbtn:hover{background:var(--accent);color:var(--paper);}
+.status{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--muted);margin-top:0.75rem;min-height:36px;}
+.box{border:1px solid var(--ink);border-radius:6px;padding:10px 14px;font-family:'IBM Plex Mono',monospace;font-size:13px;transition:border-color .3s,background .3s,opacity .4s;}
+.box.active{border-color:var(--accent);background:var(--paper);}
+.box.bad{border-color:var(--bad);color:var(--bad);}
+.row{display:flex;align-items:center;gap:14px;margin:12px 0;flex-wrap:wrap;}
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:32px;margin:1.5rem 0;}
+.code-panel{background:var(--ink);color:var(--paper);border-radius:6px;padding:1rem;font-family:'IBM Plex Mono',monospace;font-size:13px;white-space:pre-wrap;}
+footer{max-width:1400px;margin:0 auto;padding:3rem 32px 6rem;color:var(--muted);font-size:15px;border-top:1px solid var(--line);}
+@media(max-width:900px){.twocol{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<nav class="top-nav">
+  <a href="../index.html" class="nav-btn back">&larr; interviews</a>
+  <a href="../../index.html" class="nav-btn">index</a>
+</nav>
+<div class="page-pips">
+  <a href="article-problem.html">page 1 · the problem</a> · <a href="article-placement.html">page 2 · where it lives</a> · <a href="article-algorithms-bucket.html">page 3 · token & leaking bucket</a> · <a href="article-algorithms-window.html">page 4 · window algorithms</a> · <span class="on">page 5 · architecture & rules</span> · <a href="article-distributed.html">page 6 · distributed & wrap-up</a>
+</div>
+<header>
+  <p class="kicker">interview prep — chapter 05 — page 5 of 6</p>
+  <h1>Architecture, rules, and response headers</h1>
+  <p class="dek">Every algorithm on the last two pages reduces to the same architecture: a fast counter, a threshold check, and a clear signal back to the client.</p>
+</header>
+<main>
+
+<section>
+<h3>Why the counter lives in Redis, not a database</h3>
+<div class="panel">
+  <button class="playbtn" onclick="runFlow()">&#9654; walk through one request</button>
+  <div id="flowView"></div>
+  <div class="status" id="flowStatus">A request, about to hit the rate-limiting middleware.</div>
+</div>
+<div class="term"><b>Why Redis specifically:</b> it natively supports exactly the two operations this needs — <span class="mono">INCR</span> (atomically bump a counter) and <span class="mono">EXPIRE</span> (auto-delete it once the time window passes) — and it's fast enough to sit on the hot path of every request, unlike a disk-backed database.</div>
+</section>
+
+<section>
+<h3>Rules: declarative, stored on disk, cached for speed</h3>
+<div class="twocol">
+<div class="code-panel">domain: messaging
+descriptor: message_type = marketing
+limit: 5 per day
+
+# translation: no more than 5 marketing
+# messages per user per day</div>
+<div class="code-panel">domain: auth
+descriptor: auth_type = login
+limit: 5 per minute
+
+# translation: no more than 5 login
+# attempts per minute</div>
+</div>
+<p>Rules like these live in configuration files on disk; background workers pull them into a fast cache periodically, so the actual request path never has to touch disk directly.</p>
+</section>
+
+<section>
+<h3>What the client actually sees</h3>
+<div class="panel">
+  <button class="playbtn" onclick="runHeaders()">&#9654; a client gets throttled — watch the response</button>
+  <div id="headerView"></div>
+  <div class="status" id="headerStatus">A client, about to exceed its limit.</div>
+</div>
+<div class="term">Three response headers turn "getting rate limited" into something a client can react to gracefully: remaining allowed requests, the total limit per window, and how long to wait before retrying — paired with an HTTP 429 status.</div>
+</section>
+
+</main>
+<footer><p>Notes from System Design Interview by Alex Xu, ch. 4. Continue to page 6 for the distributed-environment challenges and wrap-up.</p></footer>
+<script>
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+async function runFlow(){
+  const el = document.getElementById('flowView');
+  const status = document.getElementById('flowStatus');
+  el.innerHTML = `<div class="row"><div class="box active" id="req">client request</div><div class="box" id="mw">middleware</div><div class="box" id="redis">Redis: INCR counter</div><div class="box" id="check">under limit?</div></div>`;
+  status.textContent = 'request hits the middleware...';
+  await sleep(500);
+  document.getElementById('mw').classList.add('active');
+  await sleep(500);
+  document.getElementById('redis').classList.add('active');
+  status.textContent = 'atomically incrementing the counter for this client/key in Redis...';
+  await sleep(600);
+  document.getElementById('check').classList.add('active');
+  status.textContent = 'under the limit — forward to the real API servers. over the limit — reject with 429, API servers never see it either way in the reject case.';
+}
+async function runHeaders(){
+  const el = document.getElementById('headerView');
+  const status = document.getElementById('headerStatus');
+  el.innerHTML = `<div class="code-panel" id="respPanel">HTTP/1.1 429 Too Many Requests
+X-Ratelimit-Limit: 5
+X-Ratelimit-Remaining: 0
+X-Ratelimit-Retry-After: 23</div>`;
+  status.textContent = 'client sent its 6th request against a limit of 5...';
+  await sleep(800);
+  status.textContent = 'response tells it exactly what happened and exactly when to try again — no guessing required on the client side.';
+}
+</script>
+</body>
+</html>

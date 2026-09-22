@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fixed window, sliding window log, sliding window counter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#EEEDE6;--paper-2:#E6E4D8;--ink:#1D2321;--ink-soft:#4B4A42;--muted:#8A8776;--line:#CFCCBC;--accent:#B9762B;--accent-dim:#D8C39A;--bad:#A6493A;--good:#5B7A6B;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'Source Serif 4',Georgia,serif;font-size:19px;line-height:1.65;}
+.mono{font-family:'IBM Plex Mono',monospace}
+.top-nav{max-width:1400px;margin:0 auto;padding:1.5rem 32px 0;display:flex;gap:10px;flex-wrap:wrap;}
+.nav-btn{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink-soft);text-decoration:none;padding:6px 12px;border:1px solid var(--line);border-radius:4px;}
+.nav-btn:hover{border-color:var(--accent);color:var(--accent);}
+.nav-btn.back{color:var(--accent);border-color:var(--accent-dim);}
+.page-pips{max-width:1400px;margin:0.75rem auto 0;padding:0 32px;display:flex;gap:6px;flex-wrap:wrap;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);}
+.page-pips span.on{color:var(--accent);} .page-pips a{color:inherit;text-decoration:none;}
+header{max-width:1400px;margin:0 auto;padding:1.5rem 32px 2.5rem;border-bottom:1px solid var(--line);}
+header p.kicker{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--accent);margin:0 0 1rem;}
+h1{font-size:36px;font-weight:600;margin:0 0 0.75rem;}
+header p.dek{font-size:19px;color:var(--ink-soft);margin:0;max-width:760px;}
+main{max-width:1400px;margin:0 auto;padding:2.5rem 32px 5rem;}
+h3{font-size:26px;font-weight:600;margin:2rem 0 1rem;}
+p{margin:0 0 1rem;max-width:90ch;}
+section{padding-bottom:2.5rem;border-bottom:1px solid var(--line);margin-bottom:2.5rem;}
+.term{display:block;margin:0.75rem 0;padding:1rem 1.25rem;background:var(--paper-2);border-left:2px solid var(--accent-dim);font-size:16px;color:var(--ink-soft);max-width:90ch;}
+.term b{color:var(--ink);font-weight:600;}
+.term.bad{border-left-color:var(--bad);}
+.panel{background:var(--paper-2);border:1px solid var(--line);border-radius:8px;padding:1.5rem;margin:1.5rem 0;}
+.playbtn{font-family:'IBM Plex Mono',monospace;font-size:13px;padding:8px 16px;border:1px solid var(--accent);color:var(--accent);background:none;border-radius:5px;cursor:pointer;margin-right:8px;margin-bottom:8px;}
+.playbtn:hover{background:var(--accent);color:var(--paper);}
+.status{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--muted);margin-top:0.75rem;min-height:36px;}
+.timeline{display:flex;height:60px;border:1px solid var(--line);border-radius:6px;overflow:hidden;margin:1rem 0;}
+.window{flex:1;border-right:1px dashed var(--line);display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);position:relative;}
+.window:last-child{border-right:none;}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--accent);position:absolute;bottom:6px;}
+.rollingBox{position:absolute;top:0;bottom:0;border:2px solid var(--bad);background:rgba(166,73,58,0.08);transition:left .8s ease,width .8s ease;}
+.box{border:1px solid var(--ink);border-radius:6px;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;transition:border-color .3s,background .3s,opacity .4s;}
+.box.active{border-color:var(--accent);background:var(--paper);}
+.box.bad{border-color:var(--bad);color:var(--bad);}
+.box.good{border-color:var(--good);color:var(--good);}
+.row{display:flex;align-items:center;gap:10px;margin:8px 0;flex-wrap:wrap;}
+footer{max-width:1400px;margin:0 auto;padding:3rem 32px 6rem;color:var(--muted);font-size:15px;border-top:1px solid var(--line);}
+</style>
+</head>
+<body>
+<nav class="top-nav">
+  <a href="../index.html" class="nav-btn back">&larr; interviews</a>
+  <a href="../../index.html" class="nav-btn">index</a>
+</nav>
+<div class="page-pips">
+  <a href="article-problem.html">page 1 · the problem</a> · <a href="article-placement.html">page 2 · where it lives</a> · <a href="article-algorithms-bucket.html">page 3 · token & leaking bucket</a> · <span class="on">page 4 · window algorithms</span> · <a href="article-architecture.html">page 5 · architecture & rules</a> · <a href="article-distributed.html">page 6 · distributed & wrap-up</a>
+</div>
+<header>
+  <p class="kicker">interview prep — chapter 05 — page 4 of 6</p>
+  <h1>Fixed window, sliding log, sliding counter</h1>
+  <p class="dek">Fixed window has a real, exploitable flaw at its edges. The other two exist purely to fix that one flaw, at two different price points.</p>
+</header>
+<main>
+
+<section>
+<h3>Fixed window counter — and its edge-burst problem</h3>
+<p>Divide time into fixed windows, count requests per window, reset at the boundary. Simple — until traffic clusters right at the seam between two windows.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runFixedWindow()">&#9654; send 5 requests at the end of a window, 5 more at the start of the next</button>
+  <div class="timeline" id="fwTimeline" style="position:relative">
+    <div class="window">2:00:00–2:00:30</div><div class="window">2:00:30–2:01:00</div><div class="window">2:01:00–2:01:30</div><div class="window">2:01:30–2:02:00</div>
+    <div class="rollingBox" id="rollingBox" style="left:0%;width:0%"></div>
+  </div>
+  <div class="status" id="fwStatus">Limit: 5 requests per minute. Watch what a rolling minute spanning the boundary actually sees.</div>
+</div>
+<div class="term bad"><b>The problem, exactly:</b> 5 requests land in the last instant of minute 1, and 5 more in the first instant of minute 2. Neither fixed window individually exceeded its quota of 5 — but any rolling one-minute span straddling that boundary sees all 10, double the intended limit.</div>
+</section>
+
+<section>
+<h3>Sliding window log — the accurate fix</h3>
+<p>Keep an actual log of timestamps. Purge anything older than the rolling window on every request, then check the log size against the limit.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runSlidingLog()">&#9654; run four requests through the log</button>
+  <div id="slwView"></div>
+  <div class="status" id="slwStatus">Limit: 2 requests per rolling minute.</div>
+</div>
+<div class="term"><b>Pro:</b> genuinely accurate — no rolling window ever sees more than the limit. <b>Con:</b> every timestamp, even from a rejected request, can linger in memory until it ages out.</div>
+</section>
+
+<section>
+<h3>Sliding window counter — the memory-efficient compromise</h3>
+<p>Estimate the rolling count instead of logging every timestamp: current window's count, plus the previous window's count weighted by how much it still overlaps the rolling window.</p>
+<div class="panel">
+  <button class="playbtn" onclick="runSlidingCounter()">&#9654; estimate the current rolling count</button>
+  <div id="swcView"></div>
+  <div class="status" id="swcStatus">Limit: 7/minute. Previous window: 5 requests. Current window so far: 3, at the 30% mark.</div>
+</div>
+<div class="term"><b>The formula in one line:</b> current window count + (previous window count × overlap fraction) = 3 + (5 × 0.7) = 6.5, rounded down to 6 — under the limit of 7, so this request goes through. <b>Trade-off:</b> it's an approximation (assumes even distribution within the previous window) — but real-world measurement found this mis-classifies only a tiny fraction of a percent of requests in practice.</div>
+</section>
+
+</main>
+<footer><p>Notes from System Design Interview by Alex Xu, ch. 4. Continue to page 5 for the architecture that actually runs any of these algorithms.</p></footer>
+<script>
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+async function runFixedWindow(){
+  const status = document.getElementById('fwStatus');
+  const rb = document.getElementById('rollingBox');
+  status.textContent = '5 requests land in window 2 (2:00:30-2:01:00), right before the boundary...';
+  rb.style.left='25%'; rb.style.width='0%';
+  await sleep(800);
+  status.textContent = '5 more land in window 3 (2:01:00-2:01:30), right after the boundary...';
+  await sleep(900);
+  status.textContent = 'now look at the rolling minute from 2:00:30 to 2:01:30 — it spans both bursts...';
+  rb.style.left='25%'; rb.style.width='50%';
+  await sleep(900);
+  status.textContent = '10 requests inside that one rolling minute — double the limit of 5, even though each fixed window stayed within its own quota.';
+}
+async function runSlidingLog(){
+  const el = document.getElementById('slwView');
+  const status = document.getElementById('slwStatus');
+  el.innerHTML = `<div class="row"><span>log:</span><div id="logRow"></div></div>`;
+  const log = document.getElementById('logRow');
+  const events = [
+    {t:'1:00:01', action:'accept'},
+    {t:'1:00:30', action:'accept'},
+    {t:'1:00:50', action:'reject'},
+    {t:'1:01:40', action:'accept (after purging 1:00:01, 1:00:30 as outdated)'}
+  ];
+  for(const e of events){
+    const box = document.createElement('span');
+    box.className='box '+(e.action.startsWith('accept')?'good':'bad');
+    box.style.marginRight='8px';
+    box.textContent = e.t+': '+e.action;
+    log.appendChild(box);
+    status.textContent = `request at ${e.t} — ${e.action}`;
+    await sleep(700);
+  }
+  status.textContent = 'accuracy is exact at every point — the cost is that the log itself has to be maintained continuously.';
+}
+async function runSlidingCounter(){
+  const el = document.getElementById('swcView');
+  const status = document.getElementById('swcStatus');
+  el.innerHTML = `<div class="row"><div class="box active">previous window: 5 requests</div><span style="font-size:18px">&times; 0.7 overlap</span><div class="box active" id="weighted">= 3.5</div></div>
+    <div class="row"><div class="box active">current window: 3 requests</div><span style="font-size:18px">+</span><div class="box" id="weighted2" style="opacity:0.3">3.5</div><span style="font-size:18px">=</span><div class="box" id="finalResult" style="opacity:0.3">?</div></div>`;
+  status.textContent = 'weighting the previous window by how much it still overlaps the current rolling view...';
+  await sleep(900);
+  document.getElementById('weighted2').style.opacity='1';
+  await sleep(700);
+  document.getElementById('finalResult').style.opacity='1';
+  document.getElementById('finalResult').textContent='6.5 → 6';
+  document.getElementById('finalResult').classList.add('good');
+  status.textContent = '6 estimated requests in the rolling window, under the limit of 7 — this request is allowed, but the next one won\'t be.';
+}
+</script>
+</body>
+</html>

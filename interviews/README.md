@@ -12,6 +12,7 @@
 | `01` | **Scale from Zero to Millions of Users** | [notes.md](01-scale-to-millions/notes.md) | [article.html](01-scale-to-millions/article.html) |
 | `02` | **Back-of-the-envelope estimation** | [notes.md](02-back-of-envelope-estimation/notes.md) | [article.html](02-back-of-envelope-estimation/article.html) |
 | `03` | **A framework for system design interviews** | [notes.md](03-framework-for-system-design-interviews/notes.md) | [article.html](03-framework-for-system-design-interviews/article.html) |
+| `05` | **Design a rate limiter (6 pages)** | [notes.md](05-design-a-rate-limiter/notes.md) | [article-problem.html](05-design-a-rate-limiter/article-problem.html) |
 
 ---
 
